@@ -25,12 +25,13 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;overscroll-behavior:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;overscroll-behavior:none;touch-action:manipulation;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+*{touch-action:manipulation}
 body{font:16px/1.5 Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}
 button,input,label{font:inherit;color:inherit}
 button{cursor:pointer}
 button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--a1);outline-offset:2px}
-#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;-webkit-user-select:none;user-select:none}
 .screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;padding:calc(var(--sat) + 14px) 16px calc(var(--sab) + 16px);overflow-y:auto;-webkit-overflow-scrolling:touch;z-index:2;animation:fade .35s ease}
 .screen.on{display:flex}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -1644,20 +1645,37 @@ else PotokDSPFactory(self);
   let stars = [], skyCache = null, vig = null, roadCache = null;
   const spec = new Float32Array(40);
 
+  // отступы безопасной зоны: вырез, статус-бар и кнопки Telegram в полноэкранном режиме
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-top:var(--sat);padding-bottom:var(--sab)';
+  document.body.appendChild(probe);
+  let INS = { top: 0, bottom: 0 };
+  function readInsets() {
+    try { const cs = getComputedStyle(probe); INS = { top: parseFloat(cs.paddingTop) || 0, bottom: parseFloat(cs.paddingBottom) || 0 }; } catch (e) { INS = { top: 0, bottom: 0 }; }
+    return INS;
+  }
   function resize() {
     const q = effQ();
     DPR = Math.min(window.devicePixelRatio || 1, q === 'low' ? 1 : q === 'mid' ? 1.5 : 2);
-    W = window.innerWidth; H = window.innerHeight;
+    W = Math.max(1, document.documentElement.clientWidth || window.innerWidth);
+    H = Math.max(1, document.documentElement.clientHeight || window.innerHeight);
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     const land = W > H * 1.1;
-    CX = W / 2; HY = Math.round(H * (land ? 0.42 : 0.38)); PY = H * (land ? 0.84 : 0.8);
-    LANE = Math.min(W * 0.255, 150, H * 0.17);
+    const ins = readInsets(), T = Math.min(ins.top, H * 0.25), B = Math.min(ins.bottom, H * 0.15), Hs = H - T - B;
+    CX = W / 2; HY = Math.round(T + Hs * (land ? 0.4 : 0.36)); PY = T + Hs * (land ? 0.84 : 0.8);
+    LANE = Math.min(W * 0.255, 150, Hs * 0.17);
     F = LANE * Z0 / 2; CAMH = (PY - HY) * Z0 / F;
     ZNEAR = F * CAMH / (H - HY + 1) - Z0 - 0.4;
     sprites.clear(); skyCache = null; vig = null; roadCache = null;
     const r = DSP.mulberry32(99); stars = [];
     const ns = q === 'low' ? 50 : 110;
     for (let i = 0; i < ns; i++) stars.push({ x: r(), y: Math.pow(r(), 1.6), s: r() < 0.12 ? 2 : 1, p: r() * 6.28 });
+  }
+  let resizeQueued = false;
+  function queueResize() {
+    if (resizeQueued) return;
+    resizeQueued = true;
+    requestAnimationFrame(() => { resizeQueued = false; resize(); if (state.screen === 'track') drawMap(); });
   }
   const sc = (z) => F / (z + Z0);
   const pY = (z, h) => HY + (CAMH - (h || 0)) * sc(z);
@@ -2379,29 +2397,65 @@ else PotokDSPFactory(self);
 
   // ---------- ввод ----------
   const drag = { id: null, x0: 0, lx: 0, t0: 0, moved: false };
-  cv.addEventListener('pointerdown', (e) => {
+  function dStart(id, x) {
     if (state.screen !== 'play') return;
-    drag.id = e.pointerId; drag.x0 = drag.lx = e.clientX; drag.t0 = performance.now(); drag.moved = false;
-    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* */ }
-  });
-  cv.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== drag.id || state.screen !== 'play') return;
-    const dx = e.clientX - drag.lx; drag.lx = e.clientX;
-    if (Math.abs(e.clientX - drag.x0) > 10) drag.moved = true;
-    if (settings.tilt) return;
+    drag.id = id; drag.x0 = drag.lx = x; drag.t0 = performance.now(); drag.moved = false;
+  }
+  function dMove(id, x) {
+    if (id !== drag.id || state.screen !== 'play') return;
+    const dx = x - drag.lx; drag.lx = x;
+    if (Math.abs(x - drag.x0) > 12) drag.moved = true;
+    if (settings.tilt || !drag.moved) return;
     player.tx = clamp(player.tx + dx / (LANE * 1.05) * 2 * settings.sens, -2.35, 2.35);
-  });
-  const pEnd = (e) => {
-    if (e.pointerId !== drag.id) return;
+  }
+  let lastTapT = 0, lastTapDir = 0;
+  function dEnd(id, x, cancel) {
+    if (id !== drag.id) return;
     drag.id = null;
     if (state.screen !== 'play' || settings.tilt) return;
-    if (!drag.moved && performance.now() - drag.t0 < 320) {
-      const dir = e.clientX < W / 2 ? -1 : 1;
+    const now = performance.now();
+    if (!cancel && !drag.moved && now - drag.t0 < 300) {
+      const dir = x < W / 2 ? -1 : 1;
+      // защита от дребезга: один и тот же тап, пришедший дважды за 60 мс, не считаем
+      if (now - lastTapT < 60 && dir === lastTapDir) return;
+      lastTapT = now; lastTapDir = dir;
       player.tx = clamp(nearestLane(player.tx) + dir * 2, -2, 2);
     } else player.tx = nearestLane(player.tx);
-  };
-  cv.addEventListener('pointerup', pEnd);
-  cv.addEventListener('pointercancel', pEnd);
+  }
+  // пальцы: touch-события с preventDefault — никакого зума, прокрутки и «призрачных» кликов
+  const tid = (t) => 't' + t.identifier;
+  cv.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    if (drag.id !== null && e.touches.length > 1) return; // второй палец не перехватывает управление
+    dStart(tid(t), t.clientX);
+  }, { passive: false });
+  cv.addEventListener('touchmove', (e) => { e.preventDefault(); for (const t of e.changedTouches) dMove(tid(t), t.clientX); }, { passive: false });
+  cv.addEventListener('touchend', (e) => { e.preventDefault(); for (const t of e.changedTouches) dEnd(tid(t), t.clientX, false); }, { passive: false });
+  cv.addEventListener('touchcancel', (e) => { for (const t of e.changedTouches) dEnd(tid(t), t.clientX, true); });
+  // мышь и стилус
+  cv.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
+    dStart('p' + e.pointerId, e.clientX);
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* */ }
+  });
+  cv.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') dMove('p' + e.pointerId, e.clientX); });
+  cv.addEventListener('pointerup', (e) => { if (e.pointerType !== 'touch') dEnd('p' + e.pointerId, e.clientX, false); });
+  cv.addEventListener('pointercancel', (e) => { if (e.pointerType !== 'touch') dEnd('p' + e.pointerId, e.clientX, true); });
+  // глобально: двойной тап, щипок и долгое нажатие не зумят и не выделяют страницу
+  document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('contextmenu', (e) => { if (state.screen === 'play') e.preventDefault(); });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = performance.now();
+    const t = e.target;
+    const ui = t && t.closest && t.closest('button, input, label, a, summary, select, textarea, .list');
+    if (now - lastTouchEnd < 380 && !ui) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+  document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
   window.addEventListener('keydown', (e) => {
     if (state.screen === 'play') {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') { player.tx = clamp(nearestLane(player.tx) - 2, -2, 2); e.preventDefault(); }
@@ -2917,7 +2971,25 @@ else PotokDSPFactory(self);
     try { if (tgv('8.0') && (tg.platform === 'android' || tg.platform === 'ios')) { tg.requestFullscreen(); tg.lockOrientation(); } } catch (e) { /* */ }
     try { if (tgv('6.1')) tg.BackButton.onClick(goBack); } catch (e) { /* */ }
     try { if (tgv('8.0')) tg.onEvent('deactivated', pauseGame); } catch (e) { /* */ }
-    try { tg.onEvent('viewportChanged', () => resize()); } catch (e) { /* */ }
+    for (const ev of ['viewportChanged', 'fullscreenChanged', 'safeAreaChanged', 'contentSafeAreaChanged']) {
+      try { tg.onEvent(ev, applyInsets); } catch (e) { /* */ }
+    }
+    try { tg.onEvent('fullscreenFailed', () => {}); } catch (e) { /* */ }
+    applyInsets();
+  }
+  // Telegram сам выставляет CSS-переменные отступов; дублируем их из API на случай старого клиента
+  function applyInsets() {
+    try {
+      if (tg && tgv('8.0')) {
+        const sa = tg.safeAreaInset || {}, ca = tg.contentSafeAreaInset || {};
+        const top = (sa.top || 0) + (ca.top || 0), bottom = (sa.bottom || 0) + (ca.bottom || 0);
+        const st = document.documentElement.style;
+        st.setProperty('--sat', 'max(env(safe-area-inset-top, 0px), ' + top + 'px)');
+        st.setProperty('--sab', 'max(env(safe-area-inset-bottom, 0px), ' + bottom + 'px)');
+        document.documentElement.classList.toggle('tg-full', !!tg.isFullscreen);
+      }
+    } catch (e) { /* */ }
+    queueResize();
   }
 
   // ---------- события UI ----------
@@ -2961,7 +3033,9 @@ else PotokDSPFactory(self);
   $('#calAgain').addEventListener('click', startCalib);
   $('#calDone').addEventListener('click', () => { clearInterval(cal.timer); cal.running = false; openSettings(state.settingsFrom); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
-  window.addEventListener('resize', () => { resize(); if (state.screen === 'track') drawMap(); });
+  window.addEventListener('resize', queueResize);
+  window.addEventListener('orientationchange', queueResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', queueResize);
   if (!(window.DeviceOrientationEvent || tgv('8.0'))) $('#tiltSet').hidden = true;
 
   // ---------- старт ----------
