@@ -25,6 +25,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;overscroll-behavior:none;touch-action:manipulation;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 *{touch-action:manipulation}
 body{font:16px/1.5 Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}
@@ -55,6 +56,25 @@ p{margin:0}
 .seg button{min-height:44px;border:0;border-radius:12px;background:transparent;font:700 15px var(--disp);color:var(--mut)}
 .seg button.on{background:rgba(255,255,255,.14);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
 .seg.three{grid-template-columns:1fr 1fr 1fr}
+.seg.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.seg.four button{font:700 13px var(--disp);padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recs{grid-template-columns:1fr 1fr}
+.picklist{max-height:46vh}
+.item.pick .num{width:28px;height:28px;flex:none;border-radius:50%;display:grid;place-items:center;font:700 13px var(--disp);border:1.5px solid var(--line);color:#0a0614}
+.item.pick.on{border-color:color-mix(in srgb,var(--a1) 60%,transparent);background:color-mix(in srgb,var(--a1) 12%,transparent)}
+.item.pick.on .num{background:linear-gradient(135deg,var(--a1),var(--a2));border:0}
+.btn:disabled{opacity:.55;filter:grayscale(.5)}
+.fever{position:absolute;left:50%;bottom:calc(var(--sab) + 14px);transform:translateX(-50%);width:min(62vw,280px);height:38px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(8,5,20,.55);overflow:hidden;pointer-events:auto;padding:0;color:var(--ink)}
+.fever i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--a1),var(--a2),var(--a3));opacity:.55;transition:width .2s}
+.fever span{position:relative;font:700 13px var(--disp);letter-spacing:.02em}
+.fever.ready{border-color:var(--a3);box-shadow:0 0 22px -2px var(--a3);animation:fpulse .6s ease-in-out infinite alternate}
+.fever.ready i{opacity:.95}
+.fever.on i{opacity:.9;background:linear-gradient(90deg,#ff4fd8,#ffd23f,#36e6ff,#7dff9a,#ff4fd8);background-size:200% 100%;animation:frain 1s linear infinite}
+@keyframes fpulse{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.05)}}
+@keyframes frain{to{background-position:200% 0}}
+@media (prefers-reduced-motion:reduce){.fever.ready,.fever.on i{animation:none}}
+#hud.check .fever{display:none}
+.sc .ml.fev{background:linear-gradient(90deg,var(--a2),var(--a3));color:#120a00}
 .seg.three button{font:600 14px Manrope,sans-serif}
 .modeHint{font-size:14px;color:var(--mut);min-height:42px}
 .list{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:34vh;overflow-y:auto}
@@ -82,10 +102,10 @@ details.how ul{margin:8px 0 0;padding-left:18px;color:var(--mut);font-size:15px;
 .chips span{padding:6px 11px;border-radius:999px;background:var(--glass);border:1px solid var(--line);font-size:14px;white-space:nowrap}
 .chips b{font-family:var(--disp);font-weight:700}
 .recs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.rec{padding:10px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line)}
+.rec{padding:7px 11px;border-radius:12px;background:var(--glass);border:1px solid var(--line)}
 .rec.on{border-color:color-mix(in srgb,var(--a1) 60%,transparent)}
 .rec small{display:block;color:var(--dim);font-size:13px}
-.rec b{font:700 18px var(--disp);white-space:nowrap}
+.rec b{font:700 16px var(--disp);white-space:nowrap}
 .top{display:grid;gap:4px}
 .top ol{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .top li{display:flex;gap:10px;align-items:center;padding:7px 10px;border-radius:12px;background:var(--glass);font-size:15px}
@@ -161,9 +181,11 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
     <p class="tag">Игра, которая слышит твою музыку</p>
   </header>
   <div class="sheet">
-    <div class="seg modeSeg" role="tablist" aria-label="Режим">
-      <button data-mode="vibe" role="tab">Вайб</button>
-      <button data-mode="challenge" role="tab">Челлендж</button>
+    <div class="seg four modeSeg" role="tablist" aria-label="Сложность">
+      <button data-mode="easy" role="tab">Лёгкий</button>
+      <button data-mode="normal" role="tab">Норм</button>
+      <button data-mode="hard" role="tab">Хард</button>
+      <button data-mode="expert" role="tab">Эксперт</button>
     </div>
     <p class="modeHint"></p>
     <button class="btn big" id="pickBtn">
@@ -181,14 +203,18 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
       <h3>Недавние</h3>
       <ul class="list" id="libList"></ul>
     </div>
+    <button class="btn ghost" id="setOpenBtn" hidden>Собрать сет из треков</button>
     <details class="how">
       <summary>Как играть</summary>
       <ul>
-        <li>Веди пальцем влево-вправо или тапай по краям экрана — корабль меняет полосу.</li>
-        <li>Огоньки прилетают ровно в бит: собирай их подряд, чтобы рос множитель.</li>
-        <li>Вайб — без стен и проигрыша, просто кайфуй под трек.</li>
-        <li>Челлендж — на ударах бочки вырастают красные стены. Врезался — теряешь энергию и комбо.</li>
-        <li>Если бит «уплывает», зайди в настройки и откалибруй задержку.</li>
+        <li>Веди пальцем или смахивай влево-вправо — корабль меняет полосу. Тап по краю тоже сдвигает, если рядом нет кольца.</li>
+        <li>Огоньки прилетают ровно в бит — собирай подряд, растёт множитель.</li>
+        <li>Золотые кольца — тапни ровно в момент удара: «Идеально», «Хорошо» или «Мимо».</li>
+        <li>Длинные ленты — держись на них до конца.</li>
+        <li>На дропах — барьеры во всю дорогу: свайп вверх, чтобы перепрыгнуть.</li>
+        <li>Шкала «Поток» внизу копится от точной игры. Полная — свайп вверх или тап по ней: 10 секунд очки ×2 и ноты притягиваются.</li>
+        <li>Лёгкий — без стен и проигрыша. Норм, Хард и Эксперт — стены, барьеры и энергия.</li>
+        <li>Сет — несколько треков подряд, дорога не прерывается.</li>
       </ul>
     </details>
     <div class="foot">
@@ -221,9 +247,11 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
     </div>
     <div class="map"><canvas id="trMap"></canvas></div>
     <div class="chips" id="trChips"></div>
-    <div class="seg modeSeg" role="tablist" aria-label="Режим">
-      <button data-mode="vibe" role="tab">Вайб</button>
-      <button data-mode="challenge" role="tab">Челлендж</button>
+    <div class="seg four modeSeg" role="tablist" aria-label="Сложность">
+      <button data-mode="easy" role="tab">Лёгкий</button>
+      <button data-mode="normal" role="tab">Норм</button>
+      <button data-mode="hard" role="tab">Хард</button>
+      <button data-mode="expert" role="tab">Эксперт</button>
     </div>
     <p class="modeHint"></p>
     <div class="recs" id="trRecs"></div>
@@ -236,12 +264,13 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
       <button class="btn ghost" id="checkBtn">Проверить бит</button>
       <button class="btn ghost" id="otherBtn">Другой трек</button>
     </div>
-    <p class="dim">«Проверить бит» включает трек со щелчками на найденных долях: высокий щелчок — первая доля такта.</p>
+    <p class="dim" id="checkHint">«Проверить бит» включает трек со щелчками на найденных долях: высокий щелчок — первая доля такта.</p>
   </div>
 </section>
 
 <div id="hud" hidden>
   <div class="prog"><i id="hudProg"></i></div>
+  <button class="fever" id="feverBtn" aria-label="Поток"><i id="feverFill"></i><span id="feverTxt">Поток</span></button>
   <div class="hudTop">
     <div class="sc">
       <b id="hudScore">0</b>
@@ -254,6 +283,22 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
     </button>
   </div>
 </div>
+
+<section class="screen" id="s-set">
+  <div class="sheet">
+    <h2>Сет</h2>
+    <p class="mut">Отметь треки по порядку — они пойдут подряд без пауз, дорога не прервётся.</p>
+    <ul class="list picklist" id="setList"></ul>
+    <div class="seg four modeSeg" role="tablist" aria-label="Сложность">
+      <button data-mode="easy" role="tab">Лёгкий</button>
+      <button data-mode="normal" role="tab">Норм</button>
+      <button data-mode="hard" role="tab">Хард</button>
+      <button data-mode="expert" role="tab">Эксперт</button>
+    </div>
+    <p class="modeHint"></p>
+    <button class="btn big" id="setGoBtn" disabled>Выбери хотя бы два трека</button>
+  </div>
+</section>
 
 <section class="screen" id="s-pause">
   <div class="sheet center">
@@ -687,6 +732,32 @@ function PotokDSPFactory(root) {
     }
     for (const e of extra) ons.push(e);
     ons.sort((a, b) => a[0] - b[0]);
+    // длительность тянущегося звука после атаки (для длинных нот): энергия полосы держится выше половины пика
+    {
+      const NBb = S.NB, eLo = new Float32Array(S.nF), eMi = new Float32Array(S.nF);
+      for (let f = 0; f < S.nF; f++) {
+        let a = 0, b = 0; const o = f * NBb;
+        for (let k = 0; k < S.lowEnd; k++) a += Math.exp(S.L[o + k] * 2.302585) - 1;
+        for (let k = S.lowEnd; k < S.midEnd; k++) b += Math.exp(S.L[o + k] * 2.302585) - 1;
+        eLo[f] = a; eMi[f] = b;
+      }
+      const maxF = Math.round(3 / hop);
+      for (let q = 0; q < ons.length; q++) {
+        const o = ons[q], sum = o[2] + o[3] + o[4] + 1e-6;
+        let sus = 0;
+        if (o[4] / sum < 0.32 && o[1] >= 0.12) {
+          const E = o[2] >= o[3] ? eLo : eMi;
+          const f0 = Math.max(0, Math.round((o[0] + BIAS) / hop));
+          let pk = 0; for (let f = f0; f < Math.min(S.nF, f0 + 8); f++) if (E[f] > pk) pk = E[f];
+          let f = f0 + 8;
+          const nextStrong = (() => { for (let j = q + 1; j < ons.length; j++) { const n = ons[j]; if (n[0] - o[0] > 3) break; if (n[1] >= 0.45 && (o[2] >= o[3] ? n[2] >= 0.4 : n[3] >= 0.45)) return n[0]; } return o[0] + 3; })();
+          const lim = Math.min(S.nF, f0 + maxF, Math.round((nextStrong + BIAS) / hop));
+          while (f < lim && E[f] > 0.5 * pk) f++;
+          sus = Math.max(0, (f - f0) * hop);
+        }
+        o.push(Math.round(sus * 100) / 100);
+      }
+    }
     prog(0.62, 'beat');
     await tick();
 
@@ -1054,10 +1125,30 @@ function PotokDSPFactory(root) {
       intensity[k] = r3(clamp((i1[k] - lo5) / (1 - lo5 + 1e-9), 0, 1));
       intensitySlow[k] = r3(clamp((iS[k] - lo5) / (1 - lo5 + 1e-9), 0, 1));
     }
+    // кривая «мелодии»: центр тяжести спектра 150–2500 Гц (для изгиба дороги)
+    const contour = new Array(nG);
+    {
+      const b0 = Math.max(0, S.fb.findIndex((f) => f.hz >= 150)), b1 = Math.max(b0 + 2, S.fb.findIndex((f) => f.hz >= 2500));
+      const raw = new Float32Array(nG);
+      let prev = 0.5;
+      for (let k = 0; k < nG; k++) {
+        let num = 0, den = 0;
+        for (let j = 0; j < g; j++) {
+          const o = (k * g + j) * S.NB;
+          let mn = Infinity; for (let b = b0; b < b1; b++) if (S.L[o + b] < mn) mn = S.L[o + b];
+          for (let b = b0; b < b1; b++) { const w = S.L[o + b] - mn; num += w * (b - b0); den += w; }
+        }
+        prev = den > 0.05 ? num / den / (b1 - b0) : prev;
+        raw[k] = prev;
+      }
+      const sm = movingAvg(raw, 30);
+      const lo = percentile(sm, 0.05), hi = percentile(sm, 0.95) || lo + 1;
+      for (let k = 0; k < nG; k++) contour[k] = r3(clamp((sm[k] - lo) / (hi - lo + 1e-9), 0, 1));
+    }
     const bpms = Array.from(lbpm).sort((a, b) => a - b);
     prog(1, 'done');
     return {
-      v: 3, duration, step: g * hop,
+      v: 4, duration, step: g * hop,
       bpm: bpms.length ? Math.round(bpms[bpms.length >> 1] * 10) / 10 : 120,
       bpmMin: sections.length ? Math.min(...sections.map((s) => s.bpm)) : 0,
       bpmMax: sections.length ? Math.max(...sections.map((s) => s.bpm)) : 0,
@@ -1065,7 +1156,7 @@ function PotokDSPFactory(root) {
       beats: beats.map(r4), beatPos: Array.from(bpos), beatMeter: Array.from(bmeter),
       beatKick: Array.from(K, r3), beatSnare: Array.from(SN, r3), beatEnergy: Array.from(EN, (x) => r3(x / eP)),
       downbeats, sections, tempoChanges, drops,
-      onsets: ons, intensity, intensitySlow,
+      onsets: ons, intensity, intensitySlow, contour,
     };
   }
 
@@ -1078,16 +1169,26 @@ function PotokDSPFactory(root) {
     const a = f - i; return arr[i] * (1 - a) + arr[i + 1] * a;
   }
 
-  function generateLevel(an, mode, seedStr) {
-    const vibe = mode === 'vibe';
+  // параметры сложности
+  const DIFF = {
+    easy: { per: 0.75, perE: 0.7, cap: 3.2, gap: 0.19, walls: 0, wallGap: [9, 9], dbl: 0, ring: 1, ringGap: 3.5, barrierBars: 0, holdPer16: 0.7, speed: 12.5, win: [0.07, 0.14] },
+    normal: { per: 1.15, perE: 1.05, cap: 4.6, gap: 0.15, walls: 1, wallGap: [0.95, 0.55], dbl: 0.3, ring: 2, ringGap: 1.4, barrierBars: 8, holdPer16: 0.6, speed: 14.5, win: [0.05, 0.11] },
+    hard: { per: 1.45, perE: 1.35, cap: 6, gap: 0.12, walls: 2, wallGap: [0.8, 0.42], dbl: 0.55, ring: 3, ringGap: 0.45, barrierBars: 4, holdPer16: 0.55, speed: 16, win: [0.045, 0.095] },
+    expert: { per: 1.75, perE: 1.6, cap: 7.5, gap: 0.1, walls: 3, wallGap: [0.6, 0.36], dbl: 0.75, ring: 4, ringGap: 0.3, barrierBars: 2, holdPer16: 0.5, speed: 17.5, win: [0.035, 0.075] },
+  };
+  const normMode = (m) => (m === 'vibe' ? 'easy' : m === 'challenge' ? 'normal' : DIFF[m] ? m : 'normal');
+
+  function generateLevel(an, modeIn, seedStr, opts) {
+    const mode = normMode(modeIn), P = DIFF[mode], easy = mode === 'easy';
     const rnd = mulberry32(seedFrom(String(seedStr) + '|' + mode));
     const beats = an.beats, nb = beats.length, dur = an.duration;
     const sections = an.sections && an.sections.length ? an.sections : [{ t0: 0, t1: dur, b0: 0, b1: nb, energy: 0.6, kick: 0.5, type: 'main', label: 0, bpm: an.bpm, meter: 4 }];
     const beatIdx = (t) => { let lo = 0, hi = nb - 1, r = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (beats[m] <= t) { r = m; lo = m + 1; } else hi = m - 1; } return r; };
     const secAt = (t) => { for (let k = sections.length - 1; k >= 0; k--) if (t >= sections[k].t0) return k; return 0; };
     const ibiAt = (i) => (i + 1 < nb ? beats[i + 1] - beats[i] : i > 0 ? beats[i] - beats[i - 1] : 0.5);
+    const isPlay = (type) => type === 'main' || type === 'drop' || type === 'build';
 
-    // 1. триольное ли ощущение в каждой части
+    // 1. триольное ощущение по частям
     const trip = sections.map(() => [0, 0]);
     for (const o of an.onsets) {
       const i = beatIdx(o[0]); if (i < 0 || i + 1 >= nb || o[1] < 0.08) continue;
@@ -1097,13 +1198,28 @@ function PotokDSPFactory(root) {
     }
     const isTrip = trip.map(([a, b]) => a >= 8 && a > 1.4 * b);
 
-    // 2. кандидаты: каждая атака получает вес по месту в такте
+    // 2. барьеры для прыжка: начало дропа и дальше через N тактов
+    const barriers = [];
+    if (P.barrierBars) {
+      for (const sec of sections) {
+        if (sec.type !== 'drop' || sec.t0 < 3) continue;
+        let bars = 0;
+        for (let i = sec.b0; i < Math.min(nb, sec.b1); i++) {
+          if (an.beatPos[i] !== 0) continue;
+          if (bars % P.barrierBars === 0 && beats[i] < dur - 2) barriers.push({ t: beats[i] });
+          bars++;
+        }
+      }
+    }
+    const nearBarrier = (t, w) => barriers.some((b) => Math.abs(b.t - t) < w);
+
+    // 3. кандидаты в ноты: вес по месту в такте
     const cands = [];
     for (const o of an.onsets) {
-      const [t, s, lo, mi, hi, br] = o;
+      const [t, s, lo, mi, hi, br] = o, sus = o[6] || 0;
       if (t < 0.4 || t > dur - 0.4) continue;
       const i = beatIdx(t), k = secAt(t);
-      let w = 0.12, grid = 'off', beatI = -1;
+      let w = 0.12, grid = 'off';
       if (i >= 0 && i + 1 < nb) {
         const ibi = ibiAt(i), ph = (t - beats[i]) / ibi;
         const fr = isTrip[k] ? [0, 1 / 3, 2 / 3, 1] : [0, 0.25, 0.5, 0.75, 1];
@@ -1111,46 +1227,71 @@ function PotokDSPFactory(root) {
         for (const f of fr) { const d = Math.abs(ph - f); if (d < bd) { bd = d; best = f; } }
         if (bd * ibi < Math.max(0.035, 0.1 * ibi)) {
           if (best === 0 || best === 1) {
-            beatI = best === 1 ? i + 1 : i;
-            const pos = an.beatPos[beatI], M = an.beatMeter[beatI];
+            const bi = best === 1 ? i + 1 : i, pos = an.beatPos[bi], M = an.beatMeter[bi];
             w = pos === 0 ? 1 : M === 4 && pos === 2 ? 0.82 : 0.7; grid = pos === 0 ? 'down' : 'beat';
           } else if (best === 0.5) { w = 0.5; grid = '8'; } else if (isTrip[k]) { w = 0.44; grid = '3'; } else { w = 0.28; grid = '16'; }
         }
       }
       const sum = lo + mi + hi + 1e-6;
       const kick = lo >= 0.35, snare = !kick && mi >= 0.45 && s >= 0.25, hat = !kick && !snare && (hi >= 0.5 || (lo < 0.25 && hi / sum >= 0.18));
-      cands.push({ t, s, w, grid, beatI, kick, snare, hat, br, sec: k, score: 0.5 * s + 0.42 * w + (kick ? 0.14 : 0) + (snare ? 0.12 : 0) });
+      const tonal = hi / sum < 0.32;
+      cands.push({ t, s, w, grid, kick, snare, hat, br, sec: k, sus: tonal ? sus : 0, score: 0.5 * s + 0.42 * w + (kick ? 0.14 : 0) + (snare ? 0.12 : 0) });
     }
 
-    // 3. отбор по бюджету каждой части
-    const minGap = vibe ? 0.17 : 0.12;
+    // 4. длинные ноты (ленты) — тянущиеся звуки
+    const holds = [];
+    {
+      const occupied = (a, b) => holds.some((h) => a < h.end + 0.5 && b > h.t - 0.5) || barriers.some((x) => x.t > a - 0.6 && x.t < b + 0.6);
+      sections.forEach((sec, k) => {
+        const quota = Math.max(sec.b1 - sec.b0 >= 16 ? 1 : 0, Math.round(P.holdPer16 * (sec.b1 - sec.b0) / 16 + 0.2 * rnd()));
+        if (!quota) return;
+        const list = cands.filter((c) => c.sec === k && c.sus >= 0.5 && c.s >= 0.1 && (c.grid === 'down' || c.grid === 'beat' || c.grid === '8')).sort((a, b) => (b.sus * 0.6 + b.score) - (a.sus * 0.6 + a.score));
+        let n = 0;
+        for (const c of list) {
+          if (n >= quota) break;
+          // конец ленты — на ближайшую восьмую
+          let end = c.t + Math.min(2.6, c.sus);
+          const i = beatIdx(end);
+          if (i >= 0 && i + 1 < nb) { const ibi = ibiAt(i), ph = (end - beats[i]) / ibi; end = beats[i] + Math.round(ph * 2) / 2 * ibi; }
+          if (end - c.t < 0.45 || end > sec.t1 + 0.2 || end > dur - 0.5) continue;
+          if (occupied(c.t, end)) continue;
+          holds.push({ t: c.t, end, c }); n++;
+        }
+      });
+      holds.sort((a, b) => a.t - b.t);
+    }
+
+    // 5. отбор нот по бюджету части
+    const minGap = P.gap;
     const taken = [];
     const free = (t) => {
       let lo = 0, hi = taken.length; while (lo < hi) { const m = (lo + hi) >> 1; if (taken[m] < t) lo = m + 1; else hi = m; }
       return !((lo < taken.length && taken[lo] - t < minGap) || (lo > 0 && t - taken[lo - 1] < minGap));
     };
     const insert = (t) => { let lo = 0, hi = taken.length; while (lo < hi) { const m = (lo + hi) >> 1; if (taken[m] < t) lo = m + 1; else hi = m; } taken.splice(lo, 0, t); };
-    const chosen = [];
+    const inHold = (t) => holds.some((h) => t > h.t - minGap && t < h.end + minGap);
+    const chosen = holds.map((h) => Object.assign({}, h.c, { hold: h.end }));
+    for (const h of holds) insert(h.t);
     sections.forEach((sec, k) => {
       const list = cands.filter((c) => c.sec === k).sort((a, b) => b.score - a.score);
       const nBeats = Math.max(1, sec.b1 - sec.b0);
       const e = clamp(sec.energy, 0, 1.2);
-      let per = vibe ? 0.85 + 0.75 * e : 1.35 + 1.35 * e;
+      let per = P.per + P.perE * (e - 0.5);
       if (sec.type === 'break') per *= 0.6; else if (sec.type === 'drop') per *= 1.15; else if (sec.type === 'intro' || sec.type === 'outro') per *= 0.75; else if (sec.type === 'build') per *= 0.9;
       const ibi = sec.bpm ? 60 / sec.bpm : 0.5;
-      per = Math.min(per, (vibe ? 3.6 : 6) * ibi);
-      const budget = Math.round(per * nBeats);
+      per = clamp(per, 0.3, P.cap * ibi);
+      const budget = Math.round(per * nBeats) - chosen.filter((c) => c.sec === k).length;
       let n = 0;
       for (const c of list) {
         if (n >= budget) break;
-        if (c.score < (vibe ? 0.2 : 0.14)) break;
-        if (!free(c.t)) continue;
+        if (c.score < (easy ? 0.2 : 0.14)) break;
+        if (!free(c.t) || inHold(c.t)) continue;
         insert(c.t); chosen.push(c); n++;
       }
     });
     chosen.sort((a, b) => a.t - b.t);
 
-    // 4. полосы: узоры по тактам, повторяющиеся части получают одинаковый рисунок
+    // 6. полосы: узоры по тактам; одинаковые части — одинаковый рисунок
     const MOTIFS = ['contour', 'zigzag', 'stairs', 'hold', 'mirror'];
     const bs = chosen.map((c) => c.br).sort((a, b) => a - b);
     const rank = (b) => { let lo = 0, hi = bs.length; while (lo < hi) { const m = (lo + hi) >> 1; if (bs[m] < b) lo = m + 1; else hi = m; } return bs.length > 1 ? lo / (bs.length - 1) : 0.5; };
@@ -1181,56 +1322,191 @@ function PotokDSPFactory(root) {
       const dt = c.t - prevT;
       const maxMove = dt >= 0.32 ? 2 : dt >= 0.14 ? 1 : 0;
       lane = clamp(lane + clamp(target - lane, -maxMove, maxMove), 0, 2);
-      const kind = (c.kick && (c.grid === 'down' || c.grid === 'beat')) ? 'bass' : c.snare ? 'big' : c.kick ? 'bass' : 'small';
-      notes.push({ t: c.t, lane, kind, s: c.s, pts: kind === 'big' ? 25 : kind === 'bass' ? 20 : 10, grid: c.grid });
-      prevT = c.t; prevU = u;
+      if (c.hold) {
+        notes.push({ t: c.t, end: c.hold, lane, kind: 'hold', s: c.s, pts: 20, grid: c.grid });
+        prevT = c.hold;
+      } else {
+        const kind = (c.kick && (c.grid === 'down' || c.grid === 'beat')) ? 'bass' : c.snare ? 'big' : c.kick ? 'bass' : 'small';
+        notes.push({ t: c.t, lane, kind, s: c.s, pts: kind === 'big' ? 25 : kind === 'bass' ? 20 : 10, grid: c.grid });
+        prevT = c.t;
+      }
+      prevU = u;
     }
 
-    // 5. стены в челлендже — на долях с бочкой
+    // 7. стены на ударах бочки
     const obstacles = [];
-    if (!vibe) {
+    if (P.walls) {
       let lastO = -10, ni = 0;
       for (let i = 0; i < nb; i++) {
         const t = beats[i];
         if (t < 2.5 || t > dur - 1) continue;
         const sec = sections[secAt(t)];
-        if (sec.type === 'break' || sec.type === 'intro' || sec.type === 'outro' || sec.energy < 0.35) continue;
-        if ((an.beatKick[i] || 0) < 0.45) continue;
+        if (!isPlay(sec.type) || sec.energy < 0.35 || sec.type === 'build') continue;
+        const kickB = (an.beatKick[i] || 0) >= 0.45, snB = (an.beatSnare && an.beatSnare[i] || 0) >= 0.5;
         const pos = an.beatPos[i], drop = sec.type === 'drop';
-        if (!drop && !(pos === 0 || (an.beatMeter[i] === 4 && pos === 2))) continue;
-        const gap = drop ? 0.42 : 0.85;
-        if (t - lastO < gap) continue;
+        let ok = false;
+        if (P.walls === 1) ok = kickB && (drop || pos === 0 || (an.beatMeter[i] === 4 && pos === 2));
+        else if (P.walls === 2) ok = kickB;
+        else ok = kickB || snB;
+        if (!ok) continue;
+        const gap = drop ? P.wallGap[1] : P.wallGap[0];
+        if (t - lastO < gap || nearBarrier(t, 0.5)) continue;
         const used = new Set();
-        while (ni < notes.length && notes[ni].t < t - 0.3) ni++;
+        while (ni < notes.length && (notes[ni].end || notes[ni].t) < t - 0.3) ni++;
         for (let j = ni; j < notes.length && notes[j].t <= t + 0.3; j++) used.add(notes[j].lane);
         const freeL = [0, 1, 2].filter((l) => !used.has(l));
         if (!freeL.length) continue;
-        const two = freeL.length === 2 && pos === 0 && drop && rnd() < 0.6;
+        const two = freeL.length === 2 && (pos === 0 || mode === 'expert') && (drop || mode === 'expert') && rnd() < P.dbl;
         obstacles.push({ t, lanes: two ? freeL : [freeL[Math.floor(rnd() * freeL.length)]] });
         lastO = t;
       }
     }
 
-    // 6. пульс и линии долей
+    // 8. золотые кольца — тапы точно в бит
+    const rings = [];
+    {
+      let last = -10;
+      for (let i = 0; i < nb; i++) {
+        const t = beats[i];
+        if (t < 3 || t > dur - 1) continue;
+        const sec = sections[secAt(t)];
+        if (!isPlay(sec.type)) continue;
+        const pos = an.beatPos[i], down = pos === 0;
+        const kickB = (an.beatKick[i] || 0) >= 0.4, snB = (an.beatSnare && an.beatSnare[i] || 0) >= 0.4;
+        let ok;
+        if (P.ring === 1) ok = down && sec.type !== 'build';
+        else if (P.ring === 2) ok = down;
+        else if (P.ring === 3) ok = down || (snB && sec.type !== 'build');
+        else ok = down || kickB || snB;
+        if (!ok || t - last < P.ringGap || nearBarrier(t, 0.45)) continue;
+        rings.push({ t, down });
+        last = t;
+      }
+    }
+
+    // 9. пульс и линии долей
     const pulses = beats.map((t, i) => [t, r3(clamp(0.3 + 0.7 * (an.beatKick[i] || 0), 0, 1)), an.beatPos[i] === 0 ? 1 : 0]);
 
-    // 7. скорость: следует темпу и громкости
-    const step = an.step, nG = an.intensitySlow.length;
+    // 10. замедление перед дропом
+    const preDrops = [];
+    sections.forEach((sec, k) => {
+      if (sec.type !== 'drop' || k === 0) return;
+      const p = sections[k - 1];
+      if (!(p.type === 'build' || p.type === 'break' || sec.energy - p.energy > 0.15)) return;
+      const i = beatIdx(sec.t0 + 0.01);
+      const bar = (an.beatMeter[i] || 4) * ibiAt(Math.max(0, i - 1));
+      preDrops.push([Math.max(p.t0, sec.t0 - Math.min(2.4, bar)), sec.t0]);
+    });
+
+    // 11. скорость, мелодия, громкость — функции времени для построения дороги
+    const step = an.step;
     const bpmAt = (t) => { const i = clamp(beatIdx(t), 0, Math.max(0, nb - 2)); let s2 = 0, c2 = 0; for (let j = Math.max(1, i - 2); j <= Math.min(nb - 1, i + 3); j++) { s2 += beats[j] - beats[j - 1]; c2++; } return c2 ? 60 / (s2 / c2) : an.bpm || 120; };
-    const base = vibe ? 13 : 15.5;
     const drops = an.drops || [];
-    const boost = (t) => { let b = 0; for (const d of drops) if (t >= d) b = Math.max(b, Math.exp(-(t - d) / 3)); return b; };
+    const speedAt = (t) => {
+      let k = 1;
+      for (const [a, b] of preDrops) {
+        if (t >= a && t < b) { const x = (t - a) / (b - a); k *= 1 - 0.45 * x * x * (3 - 2 * x); }
+        else if (t >= b && t < b + 4) k *= 1 + 0.35 * Math.exp(-(t - b) / 1.2);
+      }
+      return P.speed * Math.pow(clamp(bpmAt(t), 60, 200) / 120, 0.5) * (0.8 + 0.4 * sampleCurve(an.intensitySlow, step, t)) * k;
+    };
+    const contourAt = (t) => sampleCurve(an.contour || [], step, t);
+    const intensityAt = (t) => sampleCurve(an.intensitySlow, step, t);
+
+    const totalPts = notes.reduce((a, n) => a + n.pts, 0);
+    const lv = {
+      mode, notes, obstacles, rings, barriers, pulses, preDrops, win: P.win, fail: !easy,
+      totalPts, duration: dur, drops, bpm: an.bpm, phase: an.phase,
+      sections: sections.map((s) => ({ t0: s.t0, t1: s.t1, type: s.type, bpm: s.bpm, label: s.label })), tempoChanges: an.tempoChanges || [],
+      _speedAt: speedAt, _contourAt: contourAt, _intensityAt: intensityAt,
+    };
+    if (!(opts && opts.noPath)) Object.assign(lv, buildPath(dur, step, speedAt, contourAt, intensityAt));
+    return lv;
+  }
+
+  // дорога: пройденный путь по времени и изгиб по мелодии (по пройденному пути)
+  function buildPath(T, step, speedAt, contourAt, intensityAt) {
+    const nG = Math.max(2, Math.ceil(T / step) + 1);
     const sp = new Float32Array(nG);
-    for (let k = 0; k < nG; k++) { const t = k * step; sp[k] = base * Math.pow(clamp(bpmAt(t), 60, 200) / 120, 0.5) * (0.8 + 0.4 * sampleCurve(an.intensitySlow, step, t)) * (1 + 0.15 * boost(t)); }
-    const sps = movingAvg(sp, 25);
+    for (let k = 0; k < nG; k++) sp[k] = speedAt(k * step);
+    const sps = movingAvg(sp, 8);
     const dist = new Float32Array(nG + 1);
     for (let k = 0; k < nG; k++) dist[k + 1] = dist[k] + sps[k] * step;
-    const totalPts = notes.reduce((a, n) => a + n.pts, 0);
-    return {
-      mode, notes, obstacles, pulses, dist, distStep: step, speed0: sps[0] || base, speedEnd: sps[nG - 1] || base,
-      totalPts, duration: dur, drops, bpm: an.bpm, phase: an.phase,
-      sections: sections.map((s) => ({ t0: s.t0, type: s.type, bpm: s.bpm, label: s.label })), tempoChanges: an.tempoChanges || [],
+    const total = dist[nG], nC = Math.ceil(total) + 80;
+    const raw = new Float32Array(nC);
+    let k = 0;
+    for (let c = 0; c < nC; c++) {
+      while (k < nG && dist[k + 1] < c) k++;
+      const t = Math.min(T, k * step);
+      raw[c] = (contourAt(t) - 0.5) * 9 * (0.45 + 0.7 * intensityAt(t));
+    }
+    const curve = movingAvg(movingAvg(raw, 14), 14);
+    return { dist, distStep: step, speed0: sps[0], speedEnd: sps[nG - 1], curve, curveStep: 1 };
+  }
+
+  // сет: несколько треков подряд в один уровень без пауз
+  function mergeSet(parts, modeIn) {
+    const mode = normMode(modeIn);
+    const segs = [];
+    let off = 0;
+    for (const p of parts) {
+      const an = p.an, st = an.step, I = an.intensity;
+      let a = 0; while (a < I.length && I[a] < 0.06) a++;
+      let b = I.length - 1; while (b > 0 && I[b] < 0.04) b--;
+      let lead = Math.max(0, a * st - 0.15), end = Math.min(an.duration, (b + 1) * st + 0.3);
+      if (end - lead < 5) { lead = 0; end = an.duration; }
+      const lv = generateLevel(an, mode, p.id, { noPath: true });
+      segs.push({ lv, an, lead, end, offset: off, len: end - lead, title: p.title, artist: p.artist, id: p.id });
+      off += end - lead;
+    }
+    const T = off;
+    const segAt = (t) => { for (let i = segs.length - 1; i >= 0; i--) if (t >= segs[i].offset) return segs[i]; return segs[0]; };
+    const local = (t) => { const s = segAt(t); return [s, clamp(t - s.offset + s.lead, s.lead, s.end)]; };
+    const M = { mode, notes: [], obstacles: [], rings: [], barriers: [], pulses: [], preDrops: [], sections: [], tempoChanges: [], drops: [], trackStarts: [], totalPts: 0, duration: T, win: DIFF[mode].win, fail: mode !== 'easy' };
+    const beatPos = [], beatMeter = [], boundaryTempo = [];
+    segs.forEach((s, k) => {
+      const sh = s.offset - s.lead, inR = (t) => t >= s.lead && t < s.end - 0.25;
+      for (const n of s.lv.notes) if (inR(n.t)) { const c = Object.assign({}, n, { t: n.t + sh }); if (n.end) c.end = Math.min(n.end, s.end - 0.3) + sh; M.notes.push(c); M.totalPts += n.pts; }
+      for (const o of s.lv.obstacles) if (inR(o.t)) M.obstacles.push({ t: o.t + sh, lanes: o.lanes });
+      for (const r of s.lv.rings) if (inR(r.t)) M.rings.push({ t: r.t + sh, down: r.down });
+      for (const b of s.lv.barriers) if (inR(b.t)) M.barriers.push({ t: b.t + sh });
+      s.lv.pulses.forEach((p, i) => { if (inR(p[0])) { M.pulses.push([p[0] + sh, p[1], p[2]]); beatPos.push(s.an.beatPos[i]); beatMeter.push(s.an.beatMeter[i]); } });
+      for (const [a, b] of s.lv.preDrops) if (inR(b)) M.preDrops.push([Math.max(a, s.lead) + sh, b + sh]);
+      for (const d of s.lv.drops) if (inR(d)) M.drops.push(d + sh);
+      for (const c of s.lv.tempoChanges) if (inR(c.t)) M.tempoChanges.push({ t: c.t + sh, from: c.from, to: c.to });
+      let first = true;
+      for (const sc of s.lv.sections) {
+        if (sc.t1 <= s.lead || sc.t0 >= s.end) continue;
+        M.sections.push({ t0: Math.max(sc.t0, s.lead) + sh, t1: Math.min(sc.t1, s.end) + sh, type: sc.type, bpm: sc.bpm, label: sc.label + k * 100, track: first ? k : undefined });
+        first = false;
+      }
+      if (k > 0) {
+        const prevB = segs[k - 1].lv.bpm, nextB = s.lv.bpm;
+        if (prevB && nextB && Math.abs(nextB / prevB - 1) > 0.04) boundaryTempo.push({ t: s.offset, from: prevB, to: nextB });
+      }
+      M.trackStarts.push({ t: s.offset, title: s.title, artist: s.artist, bpm: s.lv.bpm });
+    });
+    for (const key of ['notes', 'obstacles', 'rings', 'barriers', 'tempoChanges']) M[key].sort((a, b) => a.t - b.t);
+    // склеенный «анализ» для отображения
+    const step = 0.02, nG = Math.ceil(T / step) + 1;
+    const intensity = new Array(nG), intensitySlow = new Array(nG), contour = new Array(nG);
+    for (let i = 0; i < nG; i++) {
+      const [s, t] = local(i * step);
+      intensity[i] = sampleCurve(s.an.intensity, s.an.step, t);
+      intensitySlow[i] = sampleCurve(s.an.intensitySlow, s.an.step, t);
+      contour[i] = sampleCurve(s.an.contour || [], s.an.step, t);
+    }
+    Object.assign(M, buildPath(T, step, (t) => { const [s, x] = local(t); return s.lv._speedAt(x); }, (t) => sampleCurve(contour, step, t), (t) => sampleCurve(intensitySlow, step, t)));
+    const bpms = segs.map((s) => s.lv.bpm).filter(Boolean);
+    const an = {
+      v: 4, duration: T, step, intensity, intensitySlow, contour, beatPos, beatMeter,
+      bpm: bpms.length ? bpms.slice().sort((a, b) => a - b)[bpms.length >> 1] : 120,
+      bpmMin: Math.min(...segs.flatMap((s) => (s.an.sections || []).map((x) => x.bpm).filter(Boolean))),
+      bpmMax: Math.max(...segs.flatMap((s) => (s.an.sections || []).map((x) => x.bpm).filter(Boolean))),
+      sections: M.sections.map((s) => ({ t0: s.t0, t1: s.t1, type: s.type, meter: 4, bpm: s.bpm, track: s.track })), tempoChanges: M.tempoChanges.concat(boundaryTempo).sort((a, b) => a.t - b.t), drops: M.drops,
     };
+    M.bpm = an.bpm;
+    return { lv: M, an, segs: segs.map((s) => ({ lead: s.lead, end: s.end, offset: s.offset, len: s.len, id: s.id, title: s.title })) };
   }
 
   function distAt(lv, t) {
@@ -1434,7 +1710,14 @@ function PotokDSPFactory(root) {
     return { sr, channels: [L, R], bpm, kicks, snares, hats, drops: [12 * bar, 24 * bar], duration: dur };
   }
 
-  const API = { analyze, prepare, generateLevel, distAt, synthDemo, sampleCurve, mulberry32, seedFrom, _test: { makeRealMag } };
+  function curveAt(lv, d) {
+    const c = lv.curve; if (!c || !c.length) return 0;
+    if (d <= 0) return c[0];
+    const i = Math.floor(d), f = d - i;
+    if (i >= c.length - 1) return c[c.length - 1];
+    return c[i] + (c[i + 1] - c[i]) * f;
+  }
+  const API = { analyze, prepare, generateLevel, mergeSet, buildPath, distAt, curveAt, synthDemo, sampleCurve, mulberry32, seedFrom, DIFF, normMode, _test: { makeRealMag } };
   if (root) root.PotokDSP = API;
   return API;
 }
@@ -1460,10 +1743,12 @@ else PotokDSPFactory(self);
   const fmtNum = (n) => Math.round(n).toLocaleString('ru-RU');
   const hsl = (h, s, l, a) => 'hsla(' + ((((h % 360) + 360) % 360) | 0) + ',' + s + '%,' + l + '%,' + (a == null ? 1 : a) + ')';
   const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
-  const MODE_NAME = { vibe: 'Вайб', challenge: 'Челлендж' };
+  const MODE_NAME = { easy: 'Лёгкий', normal: 'Норм', hard: 'Хард', expert: 'Эксперт' };
   const MODE_HINT = {
-    vibe: 'Без стен и проигрыша. Собирай огоньки в такт и растворяйся в треке.',
-    challenge: 'Стены на ударах бочки, энергия и множитель до ×8. Проверь, кто тут главный по ритму.',
+    easy: 'Без стен и проигрыша — чистый вайб. Огоньки, кольца и ленты, кайфуй под трек.',
+    normal: 'Стены на ударах бочки, барьеры на дропах, энергия. Кольца на сильных долях.',
+    hard: 'Плотнее ноты, стены на каждой бочке, двойные стены и барьеры чаще. Кольца и на снейрах.',
+    expert: 'Максимум нот и колец, узкое окно «Идеально», барьер каждые два такта дропа.',
   };
   const isIOS = (tg && tg.platform === 'ios') || /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -1517,7 +1802,7 @@ else PotokDSPFactory(self);
   };
 
   // ---------- настройки ----------
-  const DEF = { offset: null, haptics: true, tilt: false, sens: 1, quality: 'auto', volume: 0.9, mode: 'vibe' };
+  const DEF = { offset: null, haptics: true, tilt: false, sens: 1, quality: 'auto', volume: 0.9, mode: 'normal' };
   const settings = Object.assign({}, DEF, ls.get('settings') || {});
   function saveSettings() { ls.set('settings', settings); cloud.set('settings', settings); }
   cloud.get(['settings']).then((v) => {
@@ -1525,7 +1810,7 @@ else PotokDSPFactory(self);
   });
 
   // ---------- звук ----------
-  const A = { ctx: null, gain: null, an: null, freq: null, src: null, buf: null, startAt: 0 };
+  const A = { ctx: null, gain: null, an: null, freq: null, src: null, buf: null, startAt: 0, extra: [] };
   let silentEl = null;
   function unlockIOS() {
     if (!isIOS || silentEl) return;
@@ -1564,10 +1849,12 @@ else PotokDSPFactory(self);
     });
   }
   function stopSrc() {
-    if (!A.src) return;
-    try { A.src.stop(); } catch (e) { /* */ }
-    try { A.src.disconnect(); } catch (e) { /* */ }
-    A.src = null;
+    for (const s of [A.src, ...A.extra]) {
+      if (!s) continue;
+      try { s.stop(); } catch (e) { /* */ }
+      try { s.disconnect(); } catch (e) { /* */ }
+    }
+    A.src = null; A.extra = [];
   }
   function playFrom(lead) {
     stopSrc();
@@ -1614,9 +1901,10 @@ else PotokDSPFactory(self);
   }
 
   // ---------- состояние ----------
-  const state = { screen: 'home', track: null, mode: settings.mode === 'challenge' ? 'challenge' : 'vibe', lastResult: null, prev: 'home', pending: null };
-  const world = { t: 0, D: 0, th: 0, thT: 0, beat: 0, kick: 0, flash: 0, flashHue: 0, shake: 0, bend: 0, bendT: 0, roll: 0, intensity: 0.35, dropT: 0 };
-  const player = { x: 0, tx: 0, vx: 0, tilt: 0, hitT: 0 };
+  settings.mode = DSP.normMode(settings.mode);
+  const state = { screen: 'home', track: null, mode: settings.mode, lastResult: null, prev: 'home', pending: null };
+  const world = { t: 0, D: 0, th: 0, thT: 0, beat: 0, kick: 0, flash: 0, flashHue: 0, shake: 0, bend: 0, bendT: 0, roll: 0, intensity: 0.35, dropT: 0, scene: 'city', scenePrev: 'city', sceneK: 1, zoom: 0, zoomT: 0, pre: 0, ringFx: 0 };
+  const player = { x: 0, tx: 0, vx: 0, tilt: 0, hitT: 0, jumpT0: null, h: 0 };
   // палитры: небо, акцент (сетка/корабль), края дороги, солнце (верх/низ), ноты
   const THEMES = [
     { sky: 278, acc: 186, edge: 318, sun1: 48, sun2: 328, small: 186, big: 48, bass: 318 },
@@ -1639,7 +1927,7 @@ else PotokDSPFactory(self);
   // ---------- canvas ----------
   const cv = $('#cv');
   const g = cv.getContext('2d', { alpha: false });
-  let W = 1, H = 1, DPR = 1, CX = 0, HY = 0, PY = 0, F = 1, CAMH = 1, LANE = 100, ZNEAR = -2;
+  let W = 1, H = 1, DPR = 1, CX = 0, HY = 0, PY = 0, F = 1, F0 = 1, CAMH = 1, LANE = 100, ZNEAR = -2;
   const Z0 = 5, ZMAX = 44;
   let autoQ = 'high';
   const effQ = () => (settings.quality === 'auto' ? autoQ : settings.quality);
@@ -1666,7 +1954,7 @@ else PotokDSPFactory(self);
     const ins = readInsets(), T = Math.min(ins.top, H * 0.25), B = Math.min(ins.bottom, H * 0.15), Hs = H - T - B;
     CX = W / 2; HY = Math.round(T + Hs * (land ? 0.4 : 0.36)); PY = T + Hs * (land ? 0.84 : 0.8);
     LANE = Math.min(W * 0.255, 150, Hs * 0.17);
-    F = LANE * Z0 / 2; CAMH = (PY - HY) * Z0 / F;
+    F0 = LANE * Z0 / 2; F = F0; CAMH = (PY - HY) * Z0 / F;
     ZNEAR = F * CAMH / (H - HY + 1) - Z0 - 0.4;
     sprites.clear(); skyCache = null; vig = null; roadCache = null;
     const r = DSP.mulberry32(99); stars = [];
@@ -1681,7 +1969,7 @@ else PotokDSPFactory(self);
   }
   const sc = (z) => F / (z + Z0);
   const pY = (z, h) => HY + (CAMH - (h || 0)) * sc(z);
-  const pX = (z, X) => CX + (X + world.bend * z * z) * sc(z);
+  const pX = (z, X) => CX + (X + bendAt(z)) * sc(z);
   const laneX = (l) => (l - 1) * 2;
   const nearestLane = (x) => clamp(Math.round(x / 2) * 2, -2, 2);
   const bucket = (h) => ((Math.round(h / 12) * 12) % 360 + 360) % 360;
@@ -1725,7 +2013,7 @@ else PotokDSPFactory(self);
   }
 
   // ---------- частицы ----------
-  const parts = [], popups = [], rings = [], streaks = [];
+  const parts = [], popups = [], fxRings = [], streaks = [];
   function burst(x, y, hue, n, spd) {
     const lim = effQ() === 'low' ? 120 : 260;
     for (let i = 0; i < n && parts.length < lim; i++) {
@@ -1733,7 +2021,10 @@ else PotokDSPFactory(self);
       parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - spd * 0.4, life: 0, max: 0.35 + Math.random() * 0.35, s: 6 + Math.random() * 10, hue: hue + (Math.random() - 0.5) * 40 });
     }
   }
-  function popup(text, x, y, hue, big) { popups.push({ text, x, y, hue, life: 0, max: big ? 1.1 : 0.7, big }); }
+  function popup(text, x, y, hue, big, judge) {
+    if (judge) for (let i = popups.length - 1; i >= 0; i--) if (popups[i].judge) popups.splice(i, 1);
+    popups.push({ text, x, y, hue, life: 0, max: judge ? 0.6 : big ? 1.1 : 0.7, big, judge });
+  }
 
   // ---------- кадр ----------
   let lastNow = performance.now(), fAcc = 0, fN = 0, fT = 0;
@@ -1765,6 +2056,8 @@ else PotokDSPFactory(self);
     world.thT += dt * 0.025;
     world.bendT = 0.004 * Math.sin(world.t * 0.21);
     player.tx = Math.sin(world.t * 0.5) * 0.8;
+    if (world.scene !== 'city') setScene('city');
+    world.zoomT = 0; world.pre = 0; player.h = 0; player.jumpT0 = null;
     updatePlayer(dt);
   }
   function updateFx(dt) {
@@ -1775,6 +2068,9 @@ else PotokDSPFactory(self);
     world.shake = Math.max(0, world.shake - dt * 2.5);
     world.kick = Math.max(0, world.kick - dt * 5);
     world.dropT = Math.max(0, world.dropT - dt * 0.6);
+    world.sceneK = Math.min(1, world.sceneK + dt / 1.2);
+    world.zoom += (world.zoomT - world.zoom) * Math.min(1, dt * (world.zoomT < world.zoom ? 14 : 3));
+    world.ringFx = Math.max(0, world.ringFx - dt * 3);
     player.hitT = Math.max(0, player.hitT - dt);
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i]; p.life += dt;
@@ -1782,7 +2078,7 @@ else PotokDSPFactory(self);
       p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 260 * dt; p.vx *= 0.98;
     }
     for (let i = popups.length - 1; i >= 0; i--) { const p = popups[i]; p.life += dt; p.y -= dt * 50; if (p.life > p.max) popups.splice(i, 1); }
-    for (let i = rings.length - 1; i >= 0; i--) { const r = rings[i]; r.life += dt; if (r.life > r.max) rings.splice(i, 1); }
+    for (let i = fxRings.length - 1; i >= 0; i--) { const r = fxRings[i]; r.life += dt; if (r.life > r.max) fxRings.splice(i, 1); }
     // палитра интерфейса следует за миром
     const hk = bucket(P.acc) + '|' + bucket(P.edge) + '|' + bucket(P.big);
     if (hk !== updateFx.hk) {
@@ -1800,51 +2096,105 @@ else PotokDSPFactory(self);
     const nx = player.x + (player.tx - player.x) * k;
     player.vx = (nx - player.x) / dt; player.x = nx;
     player.tilt += (clamp(player.vx * 0.05, -0.5, 0.5) - player.tilt) * Math.min(1, dt * 12);
-    world.roll += (clamp(-player.vx * 0.006, -0.05, 0.05) - world.bend * 3 - world.roll) * Math.min(1, dt * 5);
+    const curv = curveLv ? (DSP.curveAt(curveLv, world.D + 16) - 2 * DSP.curveAt(curveLv, world.D + 8) + DSP.curveAt(curveLv, world.D)) * 0.012 : world.bend * 3;
+    world.roll += (clamp(-player.vx * 0.006 - curv, -0.07, 0.07) - world.roll) * Math.min(1, dt * 5);
   }
 
   // ---------- игра ----------
+  const JUMP = 0.6, JUMP_H = 1.7, FEVER_T = 10;
   function prepLevel(lv) {
-    lv.nd = Float64Array.from(lv.notes, (n) => DSP.distAt(lv, n.t));
-    lv.od = Float64Array.from(lv.obstacles, (o) => DSP.distAt(lv, o.t));
-    lv.pd = Float64Array.from(lv.pulses, (p) => DSP.distAt(lv, p[0]));
+    const d = (t) => DSP.distAt(lv, t);
+    lv.nd = Float64Array.from(lv.notes, (n) => d(n.t));
+    lv.ne = Float64Array.from(lv.notes, (n) => (n.end ? d(n.end) : 0));
+    lv.od = Float64Array.from(lv.obstacles, (o) => d(o.t));
+    lv.pd = Float64Array.from(lv.pulses, (p) => d(p[0]));
+    lv.rd = Float64Array.from(lv.rings || [], (r) => d(r.t));
+    lv.bd = Float64Array.from(lv.barriers || [], (b) => d(b.t));
     return lv;
   }
-  function startGame(check) {
+  function levelFor(tr, modeIn) {
+    const mode = DSP.normMode(modeIn);
+    if (!tr.levels[mode]) {
+      if (tr.set) { const m = DSP.mergeSet(tr.set.parts, mode); tr.set.segs = m.segs; tr.levels[mode] = prepLevel(m.lv); }
+      else tr.levels[mode] = prepLevel(DSP.generateLevel(tr.an, mode, tr.id));
+    }
+    return tr.levels[mode];
+  }
+  const SCENE_OF = { intro: 'city', main: 'city', outro: 'city', break: 'ocean', build: 'tunnel', drop: 'space' };
+  function setScene(name, instant) {
+    if (name === world.scene) return;
+    world.scenePrev = instant ? name : world.scene; world.scene = name; world.sceneK = instant ? 1 : 0;
+  }
+  async function startGame(check) {
     const tr = state.track;
     if (!tr) return;
     wantFullscreen(true);
-    check = check === true;
+    check = check === true && !tr.set;
     stopClicks();
     ensureCtx(true);
-    A.buf = tr.buf;
-    const mode = state.mode;
-    if (!tr.levels[mode]) tr.levels[mode] = prepLevel(DSP.generateLevel(tr.an, mode, tr.id));
-    const lv = tr.levels[mode];
+    const lv = levelFor(tr, state.mode);
+    if (tr.set) { if (!(await prepareSetAudio(tr))) return; } else A.buf = tr.buf;
     const rnd = DSP.mulberry32(DSP.seedFrom(tr.id));
+    const nN = lv.notes.length;
     game = {
-      lv, an: tr.an, mode, vibe: mode === 'vibe', rnd,
-      ns: new Uint8Array(lv.notes.length), os: new Uint8Array(lv.obstacles.length),
-      ni: 0, oi: 0, pi: 0, di: 0, vs: 0,
-      score: 0, combo: 0, maxCombo: 0, mult: 1, energy: 100, hits: 0, dodges: 0,
-      got: 0, gotPts: 0, miss: 0, finished: false, resumeAt: 0, seedPh: rnd() * 6.28, lead: 2.2,
-      check, si: 0, tci: 0, ci: 0, lastBeatT: -10, lastDown: false, bi: -1,
+      lv, an: tr.an, mode: lv.mode, easy: lv.mode === 'easy', rnd, set: tr.set || null,
+      ns: new Uint8Array(nN), os: new Uint8Array(lv.obstacles.length), rs: new Uint8Array(lv.rings.length), bs: new Uint8Array(lv.barriers.length),
+      holdT: new Float32Array(nN), holdOn: new Uint8Array(nN), holds: [], holdAcc: 0,
+      ni: 0, oi: 0, pi: 0, ri: 0, bix: 0, vs: 0,
+      score: 0, combo: 0, maxCombo: 0, mult: 1, energy: 100, hits: 0, got: 0, gotPts: 0, miss: 0,
+      perfect: 0, good: 0, ringMiss: 0, jumps: 0, holdsDone: 0,
+      fever: 0, feverOn: 0, feverReady: false,
+      finished: false, resumeAt: 0, seedPh: rnd() * 6.28, lead: 2.2,
+      check, si: 0, tci: 0, ci: 0, lastBeatT: -10, lastDown: false, bi: -1, tsi: 0, setNext: 0, setDecoding: false,
     };
-    // номер такта для каждой доли (для подсказок в режиме проверки)
     game.barNo = new Int32Array(lv.pulses.length);
     { let b = 0; lv.pulses.forEach((p, i) => { if (p[2]) b++; game.barNo[i] = Math.max(1, b); }); }
     const want = Math.floor(rnd() * THEMES.length);
     const cur = ((Math.round(world.th) % THEMES.length) + THEMES.length) % THEMES.length;
     world.thT = Math.round(world.th) + ((want - cur + THEMES.length) % THEMES.length || THEMES.length);
-    player.x = player.tx = 0;
-    parts.length = popups.length = rings.length = 0;
+    setScene(SCENE_OF[(lv.sections[0] || {}).type] || 'city', true);
+    world.zoom = world.zoomT = 0; world.pre = 0; world.fever = 0;
+    player.x = player.tx = 0; player.jumpT0 = null; player.h = 0;
+    parts.length = popups.length = fxRings.length = 0;
     hudCache = {};
-    $('#hudEnergyWrap').style.display = game.vibe ? 'none' : '';
+    $('#hudEnergyWrap').style.display = lv.fail ? '' : 'none';
     $('#hud').classList.toggle('check', check);
     $('#hudInfo').textContent = check ? 'Слушай щелчки: высокий — сильная доля' : '';
-    playFrom(game.lead);
+    if (tr.set) playSetFrom(game.lead); else playFrom(game.lead);
     show('play');
   }
+
+  // --- сет: звук частями, следующий трек декодируется заранее и встаёт встык
+  async function prepareSetAudio(tr) {
+    const S = tr.set;
+    if (S.bufs[0]) return true;
+    show('loading'); setLoad(0.6, 'Готовлю сет…', S.parts[0].title);
+    try { S.bufs[0] = await decode(S.parts[0].bytes.slice(0)); return true; }
+    catch (e) { toast('Не получилось подготовить первый трек сета.'); openTrack(tr); return false; }
+  }
+  function playSetFrom(lead) {
+    stopSrc();
+    const now = A.ctx.currentTime;
+    A.gain.gain.cancelScheduledValues(now); A.gain.gain.setValueAtTime(settings.volume, now);
+    A.startAt = now + lead; clock.init = false;
+    schedulePart(0, game.set.bufs[0]);
+  }
+  function schedulePart(k, buf) {
+    const seg = game.set.segs[k], when = A.startAt + seg.offset, now = A.ctx.currentTime;
+    const s = A.ctx.createBufferSource(); s.buffer = buf; s.connect(A.gain);
+    let off = seg.lead, d = seg.len, at = when;
+    if (when < now + 0.03) { const late = now + 0.03 - when; at = now + 0.03; off += late; d -= late; }
+    if (d > 0.05) { s.start(at, off, d); A.extra.push(s); if (!A.src) A.src = s; }
+    game.setNext = k + 1;
+  }
+  function setTick(t) {
+    const G = game, S = G.set, k = G.setNext;
+    if (k >= S.segs.length || G.setDecoding || t < S.segs[k].offset - 25) return;
+    G.setDecoding = true;
+    decode(S.parts[k].bytes.slice(0)).then((buf) => { if (game !== G || G.finished) return; G.setDecoding = false; schedulePart(k, buf); })
+      .catch(() => { G.setDecoding = false; G.setNext = k + 1; });
+  }
+
   function updatePlay(dt, now) {
     const G = game, lv = G.lv;
     if (G.finished) { updateAttract(dt); return; }
@@ -1858,18 +2208,40 @@ else PotokDSPFactory(self);
     world.D = DSP.distAt(lv, t);
     world.intensity = DSP.sampleCurve(G.an.intensity, G.an.step, Math.max(0, t));
     updatePlayer(dt);
-    const px = player.x;
-    const catchR = G.vibe ? 1.5 : 1.15;
-    while (!G.check && G.ni < lv.notes.length && lv.notes[G.ni].t <= t) {
-      const n = lv.notes[G.ni];
-      if (Math.abs(px - laneX(n.lane)) < catchR) collect(n, G.ni); else miss(n, G.ni);
-      G.ni++;
-    }
-    while (!G.check && G.oi < lv.obstacles.length && lv.obstacles[G.oi].t <= t) {
-      const o = lv.obstacles[G.oi];
-      if (o.lanes.some((l) => Math.abs(px - laneX(l)) < 0.95)) hitWall(G.oi);
-      else { G.os[G.oi] = 2; G.dodges++; G.score += 5 * G.mult; }
-      G.oi++;
+    // прыжок
+    if (player.jumpT0 != null) { const tau = (t - player.jumpT0) / JUMP; if (tau >= 1 || tau < 0) { player.jumpT0 = null; player.h = 0; } else player.h = 4 * JUMP_H * tau * (1 - tau); }
+    const px = player.x, fev = G.feverOn > 0;
+    const catchR = fev ? 2.1 : G.easy ? 1.5 : 1.15;
+    if (!G.check) {
+      while (G.ni < lv.notes.length && lv.notes[G.ni].t <= t) {
+        const n = lv.notes[G.ni];
+        if (Math.abs(px - laneX(n.lane)) < (n.end ? Math.max(1.2, catchR - 0.4) : catchR)) collect(n, G.ni); else miss(n, G.ni);
+        if (n.end) G.holds.push(G.ni);
+        G.ni++;
+      }
+      for (let k = G.holds.length - 1; k >= 0; k--) {
+        const i = G.holds[k], n = lv.notes[i];
+        if (t >= n.end) { finishHold(i); G.holds.splice(k, 1); continue; }
+        const inLane = Math.abs(px - laneX(n.lane)) < (fev ? 1.7 : 1.2);
+        G.holdOn[i] = inLane ? 1 : 0;
+        if (inLane) {
+          G.holdT[i] += dt; G.holdAcc += dt;
+          while (G.holdAcc >= 0.1) { G.holdAcc -= 0.1; addScore(2); addFever(0.35); }
+          if (Math.random() < 0.5) { const [sx, sy] = shipPos(); burst(sx + (Math.random() - 0.5) * 16, sy - 6, noteHue('hold'), 1, 120); }
+        }
+      }
+      while (G.oi < lv.obstacles.length && lv.obstacles[G.oi].t <= t) {
+        const o = lv.obstacles[G.oi];
+        if (o.lanes.some((l) => Math.abs(px - laneX(l)) < 0.95)) hitWall(G.oi);
+        else { G.os[G.oi] = 2; addScore(5, true); }
+        G.oi++;
+      }
+      while (G.bix < lv.barriers.length && lv.barriers[G.bix].t <= t) {
+        if (player.h > 0.5) clearBarrier(G.bix); else hitBarrier(G.bix);
+        G.bix++;
+      }
+      while (G.ri < lv.rings.length && lv.rings[G.ri].t < t - lv.win[1]) { if (!G.rs[G.ri]) ringMiss(G.ri); G.ri++; }
+      if (G.feverOn > 0) { G.feverOn -= dt; if (G.feverOn <= 0) feverEnd(); }
     }
     // доли: вибро, пульс мира, подсказки
     while (G.pi < lv.pulses.length && lv.pulses[G.pi][0] <= t) {
@@ -1880,13 +2252,19 @@ else PotokDSPFactory(self);
       G.pi++;
     }
     world.beat = G.lastBeatT > -5 ? Math.exp(-Math.max(0, t - G.lastBeatT) / 0.11) * (G.lastDown ? 1 : 0.7) : 0.3;
-    // смена части трека
     while (G.si + 1 < lv.sections.length && lv.sections[G.si + 1].t0 <= t) { G.si++; sectionFx(lv.sections[G.si]); }
-    // смена темпа
     while (G.tci < lv.tempoChanges.length && lv.tempoChanges[G.tci].t <= t) {
       const c = lv.tempoChanges[G.tci++];
       popup('темп ' + Math.round(c.from) + ' → ' + Math.round(c.to), CX, HY + H * 0.12, P.acc, true);
     }
+    // камера: перед дропом замедление и приближение, на дропе рывок
+    let zt = 0, pre = 0;
+    for (const [a, b] of lv.preDrops) {
+      if (t >= a && t < b) { const x = (t - a) / (b - a); pre = x; zt = 0.26 * x * x * (3 - 2 * x); }
+      else if (t >= b && t < b + 0.45) zt = -0.12 * (1 - (t - b) / 0.45);
+    }
+    world.zoomT = zt; world.pre = pre;
+    if (G.set) { setTick(t); while (G.tsi < lv.trackStarts.length && lv.trackStarts[G.tsi].t <= t + 0.05) G.tsi++; }
     if (G.check) {
       const raw = A.ctx.currentTime - A.startAt;
       while (G.ci < lv.pulses.length && lv.pulses[G.ci][0] < raw + 0.4) {
@@ -1896,42 +2274,149 @@ else PotokDSPFactory(self);
       if (clicks.length > 64) clicks.splice(0, clicks.length - 64);
     }
     world.thT += dt * 0.003 * world.intensity;
-    world.bendT = 0.0055 * Math.sin(world.D * 0.011 + G.seedPh) * (0.35 + world.intensity);
-    if (!G.check && !G.vibe && G.energy <= 0) { finish(true); return; }
+    if (!G.check && lv.fail && G.energy <= 0) { finish(true); return; }
     if (t > lv.duration + 0.7) { finish(false); return; }
     updateHud(t);
   }
-  function shipPos() { return [pX(0, player.x), pY(0, 0.5)]; }
-  function collect(n, i) {
+  function shipPos() { return [pX(0, player.x), pY(0, 0.5 + (player.h || 0))]; }
+  const feverMul = () => (game && game.feverOn > 0 ? 2 : 1);
+  function addScore(base, noMult) { game.score += base * (noMult ? 1 : game.mult) * feverMul(); }
+  function bumpCombo() {
     const G = game;
-    G.ns[i] = 1; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
-    const m = G.vibe ? Math.min(4, 1 + Math.floor(G.combo / 16)) : Math.min(8, 1 + Math.floor(G.combo / 10));
+    G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
+    const m = G.easy ? Math.min(4, 1 + Math.floor(G.combo / 16)) : Math.min(8, 1 + Math.floor(G.combo / 10));
     if (m > G.mult) { const el = $('#hudMult'); el.classList.add('bump'); setTimeout(() => el.classList.remove('bump'), 160); }
     G.mult = m;
-    const pts = n.pts * G.mult;
+  }
+  function breakCombo(msg) {
+    const G = game;
+    if (G.easy) { G.combo = 0; G.mult = 1; return; }
+    if (msg && G.combo >= 15) popup('комбо сброшено', CX, PY - LANE * 1.2, 0, false);
+    G.combo = 0; G.mult = 1;
+  }
+  function collect(n, i) {
+    const G = game;
+    G.ns[i] = 1; bumpCombo();
+    const pts = n.pts * G.mult * feverMul();
     G.score += pts; G.got++; G.gotPts += n.pts;
     G.energy = Math.min(100, G.energy + 1.6);
+    addFever(n.kind === 'small' ? 1.1 : 2);
     const [sx, sy] = shipPos();
     const hue = noteHue(n.kind);
     burst(sx, sy - 10, hue, n.kind === 'small' ? 6 : 14, n.kind === 'small' ? 160 : 260);
-    rings.push({ x: sx, y: sy, hue, life: 0, max: 0.35, r0: LANE * 0.2, r1: LANE * (n.kind === 'small' ? 0.55 : 0.9) });
-    if (n.kind !== 'small') { popup('+' + pts, sx + (Math.random() - 0.5) * 30, sy - LANE * 0.55, hue, false); haptic('note'); }
+    fxRings.push({ x: sx, y: sy, hue, life: 0, max: 0.35, r0: LANE * 0.2, r1: LANE * (n.kind === 'small' ? 0.55 : 0.9) });
+    if (n.kind !== 'small' && n.kind !== 'hold') { popup('+' + pts, sx + (Math.random() - 0.5) * 30, sy - LANE * 0.55, hue, false); haptic('note'); }
   }
   function miss(n, i) {
     const G = game;
     G.ns[i] = 2; G.miss++;
-    if (!G.vibe && G.combo >= 15) popup('комбо сброшено', CX, PY - LANE * 1.2, 0, false);
-    G.combo = 0; G.mult = 1;
-    if (!G.vibe) G.energy -= 2.5;
+    breakCombo(true);
+    if (G.lv.fail) G.energy -= 2.5;
+  }
+  function finishHold(i) {
+    const G = game, n = G.lv.notes[i];
+    const share = G.holdT[i] / Math.max(0.1, n.end - n.t);
+    if (share >= 0.85) {
+      G.holdsDone++; addScore(25); bumpCombo(); addFever(3);
+      const [sx, sy] = shipPos();
+      popup('Лента!', sx, sy - LANE * 0.7, noteHue('hold'), true);
+      burst(sx, sy - 10, noteHue('hold'), 16, 280);
+      haptic('note');
+    }
   }
   function hitWall(i) {
     const G = game;
-    G.os[i] = 1; G.hits++; G.energy -= 24; G.combo = 0; G.mult = 1;
+    G.os[i] = 1; G.hits++; G.energy -= 24; breakCombo(false);
     world.shake = 1; world.flash = 0.9; world.flashHue = 350; player.hitT = 0.5;
     const [sx, sy] = shipPos();
     burst(sx, sy, 350, 22, 320);
     popup('удар', sx, sy - LANE * 0.6, 350, true);
     haptic('hit');
+  }
+  function clearBarrier(i) {
+    const G = game;
+    G.bs[i] = 2; G.jumps++; addScore(30); bumpCombo(); addFever(6);
+    const [sx, sy] = shipPos();
+    popup('Прыжок!', sx, sy - LANE * 0.8, P.acc, true);
+    burst(sx, sy + 10, P.acc, 18, 300);
+  }
+  function hitBarrier(i) {
+    const G = game;
+    G.bs[i] = 1; G.hits++; G.energy -= 20; breakCombo(false);
+    world.shake = 1; world.flash = 0.8; world.flashHue = 350; player.hitT = 0.5;
+    const [sx, sy] = shipPos();
+    burst(sx, sy, 350, 18, 300);
+    popup('прыгай!', sx, sy - LANE * 0.6, 350, true);
+    haptic('hit');
+  }
+  // тап в бит: возвращает true, если тап ушёл кольцу
+  function tapBeat(ts) {
+    if (state.screen !== 'play' || !game || game.check || game.finished || game.resumeAt || !clock.init) return false;
+    const G = game, lv = G.lv, win = lv.win;
+    const nowP = performance.now();
+    const tsOk = ts && ts <= nowP + 5 && nowP - ts < 250 ? ts : nowP; // у некоторых движков timeStamp в другой шкале
+    const t = clock.t + (tsOk - clock.perf) / 1000;
+    let best = -1, bd = 1e9;
+    for (let i = Math.max(0, G.ri - 1); i < lv.rings.length && lv.rings[i].t < t + win[1] + 0.02; i++) {
+      if (G.rs[i]) continue;
+      const d = Math.abs(lv.rings[i].t - t);
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best < 0 || bd > win[1]) return false;
+    const err = t - lv.rings[best].t, perfect = bd <= win[0];
+    G.rs[best] = perfect ? 1 : 2;
+    bumpCombo();
+    const [sx, sy] = shipPos();
+    if (perfect) {
+      G.perfect++; addScore(50); addFever(5);
+      popup('Идеально', CX, PY - LANE * 1.5, P.big, true, true);
+      burst(CX, sy - 20, P.big, 20, 330); haptic('note');
+    } else {
+      G.good++; addScore(25); addFever(2.5);
+      popup('Хорошо · ' + (err < 0 ? 'рано' : 'поздно'), CX, PY - LANE * 1.5, P.acc, true, true);
+    }
+    fxRings.push({ x: CX, y: sy, hue: P.big, life: 0, max: 0.45, r0: LANE * 0.5, r1: LANE * 2.2 });
+    world.ringFx = 1;
+    return true;
+  }
+  function ringMiss(i) {
+    const G = game;
+    G.rs[i] = 3; G.ringMiss++;
+    breakCombo(false);
+    if (G.lv.fail) G.energy -= 3;
+    popup('Мимо', CX, PY - LANE * 1.5, 0, false, true);
+  }
+  function addFever(x) {
+    const G = game;
+    if (!G || G.feverOn > 0) return;
+    G.fever = Math.min(100, G.fever + x);
+    if (G.fever >= 100 && !G.feverReady) {
+      G.feverReady = true;
+      popup('Поток готов — свайп вверх', CX, HY + H * 0.16, P.big, true);
+      haptic('win');
+    }
+  }
+  function activateFever() {
+    const G = game;
+    if (!G || G.fever < 100 || G.feverOn > 0 || G.finished) return false;
+    G.feverOn = FEVER_T; G.fever = 0; G.feverReady = false;
+    world.flash = 1; world.flashHue = P.big; world.shake = Math.max(world.shake, 0.4);
+    world.thT = Math.round(world.thT) + 1;
+    popup('ПОТОК ×2', CX, HY + H * 0.14, P.big, true);
+    haptic('drop');
+    return true;
+  }
+  function feverEnd() { world.flash = Math.max(world.flash, 0.35); world.flashHue = P.acc; }
+  function jump() {
+    if (!game || player.jumpT0 != null) return;
+    player.jumpT0 = world.t; haptic('ui');
+  }
+  function swipeUp() {
+    if (state.screen !== 'play' || !game || game.check || game.finished || game.resumeAt) return;
+    const G = game, t = world.t;
+    const barrierSoon = G.lv.barriers.some((b, i) => !G.bs[i] && b.t > t && b.t - t < 0.9);
+    if (!barrierSoon && activateFever()) return;
+    jump();
   }
   function dropFx() {
     world.thT = Math.round(world.thT) + 1;
@@ -1942,9 +2427,10 @@ else PotokDSPFactory(self);
     streaks.length = 0;
     for (let i = 0; i < 40; i++) streaks.push({ a: Math.random() * Math.PI * 2, d: Math.random(), s: 0.6 + Math.random() * 0.8 });
   }
-  const noteHue = (k) => P[k];
+  const noteHue = (k) => (k === 'hold' ? P.bass + 30 : P[k]);
   const SEC_NAME = { intro: 'Вступление', main: 'Основа', build: 'Разгон', drop: 'Дроп', break: 'Брейк', outro: 'Финал' };
   function sectionFx(sec) {
+    setScene(SCENE_OF[sec.type] || 'city');
     if (sec.type === 'drop') dropFx();
     else {
       world.thT = Math.round(world.thT) + 1;
@@ -1986,7 +2472,10 @@ else PotokDSPFactory(self);
     try { A.gain.gain.setTargetAtTime(0, A.ctx.currentTime, failed ? 0.08 : 0.25); } catch (e) { /* */ }
     const endedSrc = A.src;
     setTimeout(() => { if (A.src === endedSrc) stopSrc(); }, 1200);
-    const acc = G.lv.totalPts ? G.gotPts / G.lv.totalPts : 0;
+    const lv = G.lv;
+    const noteAcc = lv.totalPts ? G.gotPts / lv.totalPts : 0;
+    const ringAcc = lv.rings.length ? (G.perfect + 0.5 * G.good) / lv.rings.length : null;
+    const acc = ringAcc == null ? noteAcc : 0.75 * noteAcc + 0.25 * ringAcc;
     let grade;
     if (failed) grade = '—';
     else if (acc >= 0.95 && G.hits === 0) grade = 'S';
@@ -1995,23 +2484,32 @@ else PotokDSPFactory(self);
     else if (acc >= 0.5) grade = 'C';
     else grade = 'D';
     const tr = state.track;
-    const res = { score: G.score, acc, grade, failed, mode: G.mode, maxCombo: G.maxCombo, got: G.got, total: G.lv.notes.length, hits: G.hits, walls: G.lv.obstacles.length, dur: Math.max(0, world.t), full: G.lv.duration };
+    const res = {
+      score: G.score, acc, grade, failed, mode: G.mode, maxCombo: G.maxCombo, got: G.got, total: lv.notes.length,
+      hits: G.hits, walls: lv.obstacles.length + lv.barriers.length, perfect: G.perfect, good: G.good, rings: lv.rings.length,
+      jumps: G.jumps, barriers: lv.barriers.length, holds: G.holdsDone, holdsTotal: lv.notes.filter((n) => n.end).length,
+      dur: Math.max(0, world.t), full: lv.duration, set: !!G.set,
+    };
     state.lastResult = res;
-    const rec = getRecord(tr.id);
-    const prev = rec[G.mode];
-    res.isNew = !failed && (!prev || G.score > prev.score);
-    if (res.isNew) { rec[G.mode] = { score: G.score, grade, acc: Math.round(acc * 1000) / 1000 }; setRecord(tr.id, rec); }
+    if (!G.set) {
+      const rec = getRecord(tr.id);
+      const prev = rec[G.mode];
+      res.isNew = !failed && (!prev || G.score > prev.score);
+      if (res.isNew) { rec[G.mode] = { score: G.score, grade, acc: Math.round(acc * 1000) / 1000 }; setRecord(tr.id, rec); }
+    }
     if (failed) { world.flash = 1; world.flashHue = 350; haptic('hit'); } else haptic('win');
     setTimeout(() => showResults(res), failed ? 900 : 700);
-    submitScore(res);
+    if (!G.set) submitScore(res);
   }
 
   // ---------- HUD ----------
   let hudCache = {};
-  const hudEls = { score: $('#hudScore'), mult: $('#hudMult'), combo: $('#hudCombo'), energy: $('#hudEnergy'), ew: $('#hudEnergyWrap'), prog: $('#hudProg') };
+  const hudEls = { score: $('#hudScore'), mult: $('#hudMult'), combo: $('#hudCombo'), energy: $('#hudEnergy'), ew: $('#hudEnergyWrap'), prog: $('#hudProg'), fever: $('#feverBtn'), feverFill: $('#feverFill'), feverTxt: $('#feverTxt') };
   function setHud(key, val, fn) { if (hudCache[key] !== val) { hudCache[key] = val; fn(val); } }
   function updateHud(t) {
     const G = game;
+    const p = Math.round(clamp(t / G.lv.duration, 0, 1) * 400) / 4;
+    setHud('p', p, (v) => { hudEls.prog.style.width = v + '%'; });
     if (G.check) {
       if (G.bi >= 0 && hudCache.bi !== G.bi) {
         hudCache.bi = G.bi;
@@ -2021,40 +2519,57 @@ else PotokDSPFactory(self);
         const sec = lv.sections[G.si] || {};
         $('#hudInfo').textContent = Math.round(60 / ibi) + ' BPM · ' + M + '/4 · такт ' + G.barNo[i] + ' · доля ' + pos + ' · ' + (SEC_NAME[sec.type] || '');
       }
-      const p = Math.round(clamp(t / G.lv.duration, 0, 1) * 400) / 4;
-      setHud('p', p, (v) => { hudEls.prog.style.width = v + '%'; });
       return;
     }
+    const fev = G.feverOn > 0;
     setHud('s', G.score, (v) => { hudEls.score.textContent = fmtNum(v); });
-    setHud('m', G.mult, (v) => { hudEls.mult.textContent = '×' + v; });
+    setHud('m', G.mult * (fev ? 2 : 1) + (fev ? 'f' : ''), () => { hudEls.mult.textContent = '×' + G.mult * (fev ? 2 : 1); hudEls.mult.classList.toggle('fev', fev); });
     setHud('c', G.combo, (v) => { hudEls.combo.textContent = v >= 5 ? 'комбо ' + v : ''; });
-    if (!G.vibe) {
+    if (G.lv.fail) {
       const e = Math.round(clamp(G.energy, 0, 100));
       setHud('e', e, (v) => { hudEls.energy.style.width = v + '%'; hudEls.ew.classList.toggle('low', v < 30); });
     }
-    const p = Math.round(clamp(t / G.lv.duration, 0, 1) * 400) / 4;
-    setHud('p', p, (v) => { hudEls.prog.style.width = v + '%'; });
+    const fw = Math.round(fev ? G.feverOn / FEVER_T * 100 : G.fever);
+    const fs = fev ? 'on' : G.feverReady ? 'ready' : 'fill';
+    setHud('fw', fw, (v) => { hudEls.feverFill.style.width = v + '%'; });
+    setHud('fs', fs, (v) => {
+      hudEls.fever.classList.toggle('ready', v === 'ready'); hudEls.fever.classList.toggle('on', v === 'on');
+      hudEls.feverTxt.textContent = v === 'ready' ? 'Поток готов — свайп вверх' : v === 'on' ? 'ПОТОК ×2' : 'Поток';
+    });
   }
 
   // ---------- отрисовка ----------
+  let curveLv = null, curve0 = 0, lastRenderT = 0;
+  const bendAt = (z) => (curveLv ? DSP.curveAt(curveLv, world.D + z) - curve0 : world.bend * z * z);
+  const sceneW = (name) => (world.scene === name ? world.sceneK : world.scenePrev === name ? 1 - world.sceneK : 0);
   function render(time) {
+    const dt = Math.min(0.05, Math.max(0, time - lastRenderT)); lastRenderT = time;
     g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    // камера: приближение (перед дропом) — фокус растёт, корабль остаётся на месте
+    F = F0 * (1 + world.zoom); CAMH = (PY - HY) * Z0 / F; ZNEAR = F * CAMH / (H - HY + 1) - Z0 - 0.4;
+    curveLv = game && (state.screen === 'play' || state.screen === 'pause') && game.lv.curve ? game.lv : null;
+    curve0 = curveLv ? DSP.curveAt(curveLv, world.D) : 0;
     const hue = P.sky;
     const sh = world.shake * world.shake;
     g.save();
     if (sh > 0.001) g.translate((Math.random() - 0.5) * 14 * sh, (Math.random() - 0.5) * 10 * sh);
     g.translate(CX, PY); g.rotate(world.roll); g.translate(-CX, -PY);
-    drawSky(hue, time);
+    drawSky(hue, time, dt);
+    drawGround(hue, time);
     drawRoad(hue);
-    drawObjects(hue);
+    drawObjects(hue, time);
     drawPlayer(hue, time);
     g.restore();
-    drawFx(hue);
+    drawFx(hue, dt);
     drawOverlay(hue, time);
   }
 
-  function drawSky(hue, time) {
+  // --- небо: общий градиент, затем слои миров (город / океан / тоннель / космос)
+  const warp = [];
+  for (let i = 0; i < 150; i++) warp.push({ a: Math.random() * Math.PI * 2, r: Math.random(), s: 0.4 + Math.random() * 0.9 });
+  function drawSky(hue, time, dt) {
     const b = bucket(hue);
+    const wC = sceneW('city'), wO = sceneW('ocean'), wT = sceneW('tunnel'), wS = sceneW('space');
     if (!skyCache || skyCache.b !== b) {
       const gr = g.createLinearGradient(0, -H * 0.2, 0, HY);
       gr.addColorStop(0, hsl(b + 25, 65, 4)); gr.addColorStop(0.55, hsl(b, 70, 11)); gr.addColorStop(1, hsl(b - 25, 85, 30));
@@ -2062,25 +2577,51 @@ else PotokDSPFactory(self);
     }
     g.fillStyle = skyCache.gr;
     g.fillRect(-W * 0.3, -H * 0.3, W * 1.6, HY + H * 0.3 + 2);
-    g.fillStyle = hsl(b, 60, 4);
-    g.fillRect(-W * 0.3, HY, W * 1.6, H * 1.2);
+    if (wS > 0.01) {
+      g.fillStyle = 'rgba(2,0,12,' + (0.6 * wS).toFixed(3) + ')';
+      g.fillRect(-W * 0.3, -H * 0.3, W * 1.6, H * 1.6);
+      // туманности
+      g.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 3; k++) {
+        const nx = W * (0.2 + 0.3 * k) + Math.sin(time * 0.05 + k) * 30, ny = HY * (0.3 + 0.2 * (k % 2));
+        const rg = g.createRadialGradient(nx, ny, 0, nx, ny, W * 0.45);
+        rg.addColorStop(0, hsl(P.edge + k * 40, 90, 45, 0.18 * wS)); rg.addColorStop(1, hsl(P.edge, 90, 40, 0));
+        g.fillStyle = rg; g.fillRect(nx - W * 0.45, ny - W * 0.45, W * 0.9, W * 0.9);
+      }
+      g.globalCompositeOperation = 'source-over';
+    }
     // звёзды
     const hi = A.freq && state.screen === 'play' ? spec[30] : 0.2;
-    for (const s of stars) {
-      const a = 0.25 + 0.45 * (0.5 + 0.5 * Math.sin(time * 1.7 + s.p)) + hi * 0.4;
-      g.fillStyle = 'rgba(255,255,255,' + Math.min(1, a).toFixed(2) + ')';
-      g.fillRect(s.x * W * 1.2 - W * 0.1, s.y * HY * 0.92, s.s, s.s);
+    const sw = 1 - wS;
+    if (sw > 0.01) {
+      for (const s of stars) {
+        const a = (0.25 + 0.45 * (0.5 + 0.5 * Math.sin(time * 1.7 + s.p)) + hi * 0.4) * sw * (1 - 0.6 * wO);
+        g.fillStyle = 'rgba(255,255,255,' + Math.min(1, a).toFixed(2) + ')';
+        g.fillRect(s.x * W * 1.2 - W * 0.1, s.y * HY * 0.92, s.s, s.s);
+      }
     }
-    // солнце
+    // солнце (в космосе вместо него — планета с кольцом)
     const R = Math.min(W, H) * (W > H ? 0.16 : 0.2);
-    const sun = sunSprite(P.sun1, P.sun2, R);
+    const sxc = CX + clamp(bendAt(ZMAX) * sc(ZMAX) * 1.5, -W * 0.25, W * 0.25), syc = HY - R * 0.42;
     const k = 1 + 0.035 * world.beat + 0.05 * world.kick;
-    const sz = sun.width * k;
-    const sxc = CX + world.bend * 900, syc = HY - R * 0.42;
-    g.save(); g.beginPath(); g.rect(-W, -H, W * 3, HY + H); g.clip();
-    g.drawImage(sun, sxc - sz / 2, syc - sz / 2, sz, sz);
-    g.restore();
-    // город-эквалайзер
+    const sunA = (1 - wS) * (1 - 0.45 * wT);
+    if (sunA > 0.01) {
+      const sun = sunSprite(P.sun1, P.sun2, R), sz = sun.width * k;
+      g.save(); g.beginPath(); g.rect(-W, -H, W * 3, HY + H); g.clip();
+      g.globalAlpha = sunA; g.drawImage(sun, sxc - sz / 2, syc - sz / 2, sz, sz); g.globalAlpha = 1;
+      g.restore();
+    }
+    if (wS > 0.01) {
+      const pr = R * 0.8 * k, py = HY - R * 0.9;
+      g.globalAlpha = wS;
+      const pg = g.createRadialGradient(sxc - pr * 0.35, py - pr * 0.35, pr * 0.1, sxc, py, pr);
+      pg.addColorStop(0, hsl(P.big, 100, 75)); pg.addColorStop(0.6, hsl(P.edge, 90, 45)); pg.addColorStop(1, hsl(P.sky, 80, 12));
+      g.fillStyle = pg; g.beginPath(); g.arc(sxc, py, pr, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = hsl(P.acc, 100, 75, 0.8); g.lineWidth = 3;
+      g.beginPath(); g.ellipse(sxc, py, pr * 1.75, pr * 0.42, -0.25, 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = 1;
+    }
+    // эквалайзер-город
     let live = false;
     if (A.an && A.src && state.screen === 'play') { A.an.getByteFrequencyData(A.freq); live = true; }
     const n = spec.length;
@@ -2093,33 +2634,104 @@ else PotokDSPFactory(self);
       } else v = 0.18 + 0.1 * Math.sin(time * 1.3 + i * 0.7) + 0.06 * Math.sin(time * 2.9 + i * 1.9);
       spec[i] += (v - spec[i]) * 0.35;
     }
-    const bw = W / 2 / n;
-    const baseH = HY * 0.36;
-    g.fillStyle = hsl(b, 65, 6, 0.96);
-    g.beginPath();
-    for (let side = -1; side <= 1; side += 2) {
-      for (let i = 0; i < n; i++) {
+    const cityA = wC + 0.35 * wT;
+    if (cityA > 0.01) {
+      const bw = W / 2 / n, baseH = HY * 0.36;
+      g.globalAlpha = cityA;
+      g.fillStyle = hsl(b, 65, 6, 0.96);
+      g.beginPath();
+      for (let side = -1; side <= 1; side += 2) for (let i = 0; i < n; i++) {
         const hh = 6 + spec[i] * baseH * (0.45 + 0.75 * world.intensity) * (1 - i / n * 0.35);
         const x = CX + side * (i * bw) - (side < 0 ? bw : 0);
         g.rect(x + 1, HY - hh, bw - 2, hh + 1);
       }
-    }
-    g.fill();
-    g.strokeStyle = hsl(P.acc, 100, 65, 0.75);
-    g.lineWidth = 1.5;
-    g.beginPath();
-    for (let side = -1; side <= 1; side += 2) {
-      for (let i = 0; i < n; i++) {
+      g.fill();
+      g.strokeStyle = hsl(P.acc, 100, 65, 0.75); g.lineWidth = 1.5;
+      g.beginPath();
+      for (let side = -1; side <= 1; side += 2) for (let i = 0; i < n; i++) {
         const hh = 6 + spec[i] * baseH * (0.45 + 0.75 * world.intensity) * (1 - i / n * 0.35);
         const x = CX + side * (i * bw) - (side < 0 ? bw : 0);
         g.moveTo(x + 1, HY - hh); g.lineTo(x + bw - 1, HY - hh);
       }
+      g.stroke();
+      g.globalAlpha = 1;
     }
-    g.stroke();
+    // острова на горизонте (океан)
+    if (wO > 0.01) {
+      g.globalAlpha = wO;
+      g.fillStyle = hsl(b, 60, 7);
+      for (const [cx0, wdt, ht] of [[0.08, 0.3, 0.08], [0.82, 0.38, 0.11], [0.62, 0.16, 0.05]]) {
+        const x0 = W * cx0 - W * wdt / 2, x1 = W * cx0 + W * wdt / 2, h = HY * ht;
+        g.beginPath(); g.moveTo(x0, HY); g.quadraticCurveTo(W * cx0 - W * wdt * 0.15, HY - h * 1.4, W * cx0, HY - h); g.quadraticCurveTo(W * cx0 + W * wdt * 0.2, HY - h * 0.6, x1, HY); g.closePath(); g.fill();
+      }
+      g.globalAlpha = 1;
+    }
+    // звёзды-варп (космос): летят из точки схода
+    if (wS > 0.01) {
+      const spd = 0.25 + 0.55 * world.intensity + (game && game.feverOn > 0 ? 0.6 : 0);
+      const maxR = Math.hypot(W, H) * 0.75;
+      g.globalCompositeOperation = 'lighter';
+      g.lineCap = 'round';
+      for (const s of warp) {
+        s.r += dt * spd * s.s * (0.15 + s.r);
+        if (s.r > 1) { s.r = 0.02 + Math.random() * 0.1; s.a = Math.random() * Math.PI * 2; }
+        const r0 = s.r * s.r * maxR, r1 = r0 + (6 + 40 * s.r * spd) * s.s;
+        g.strokeStyle = 'rgba(255,255,255,' + (Math.min(1, s.r * 1.6) * wS).toFixed(2) + ')';
+        g.lineWidth = 0.6 + 1.6 * s.r;
+        g.beginPath(); g.moveTo(sxc + Math.cos(s.a) * r0, HY + Math.sin(s.a) * r0); g.lineTo(sxc + Math.cos(s.a) * r1, HY + Math.sin(s.a) * r1); g.stroke();
+      }
+      g.globalCompositeOperation = 'source-over';
+    }
     // линия горизонта
     const hg = g.createLinearGradient(0, HY - 14, 0, HY + 14);
-    hg.addColorStop(0, hsl(P.edge, 100, 60, 0)); hg.addColorStop(0.5, hsl(P.edge, 100, 70, 0.55 + 0.3 * world.beat)); hg.addColorStop(1, hsl(P.edge, 100, 60, 0));
+    hg.addColorStop(0, hsl(P.edge, 100, 60, 0)); hg.addColorStop(0.5, hsl(P.edge, 100, 70, (0.55 + 0.3 * world.beat) * (1 - 0.5 * wS))); hg.addColorStop(1, hsl(P.edge, 100, 60, 0));
     g.fillStyle = hg; g.fillRect(-W * 0.3, HY - 14, W * 1.6, 28);
+  }
+
+  // --- земля: тёмная равнина / океан / космос (пусто) + кольца тоннеля
+  function drawGround(hue, time) {
+    const b = bucket(hue), wO = sceneW('ocean'), wT = sceneW('tunnel'), wS = sceneW('space');
+    const groundA = 1 - wS;
+    if (groundA > 0.01) {
+      g.globalAlpha = groundA;
+      g.fillStyle = hsl(b, 60, 4);
+      g.fillRect(-W * 0.3, HY, W * 1.6, H * 1.2);
+      g.globalAlpha = 1;
+    }
+    if (wO > 0.01) {
+      const gr = g.createLinearGradient(0, HY, 0, H);
+      gr.addColorStop(0, hsl(P.sky, 70, 24)); gr.addColorStop(1, hsl(P.sky, 70, 5));
+      g.globalAlpha = wO; g.fillStyle = gr; g.fillRect(-W * 0.3, HY, W * 1.6, H * 1.2);
+      // волны и дорожка от солнца
+      const N = 26, R = Math.min(W, H) * (W > H ? 0.16 : 0.2), sxc = CX + clamp(bendAt(ZMAX) * sc(ZMAX) * 1.5, -W * 0.25, W * 0.25);
+      for (let k = 1; k < N; k++) {
+        const f = k / N, y = HY + (H - HY) * Math.pow(f, 2.1);
+        const a = 0.22 * (1 - f * 0.6) * wO;
+        g.strokeStyle = hsl(P.acc, 90, 70, a); g.lineWidth = 1 + f * 1.5;
+        g.beginPath();
+        const segW = 30 + f * 90, ph = (time * (12 + 30 * f) + k * 37) % (segW * 2);
+        for (let x = -segW * 2 + ph - W * 0.2; x < W * 1.2; x += segW * 2) { g.moveTo(x, y); g.lineTo(x + segW * (0.5 + 0.3 * Math.sin(k + time)), y); }
+        g.stroke();
+        const hw = R * (0.85 - 0.5 * f) * (0.7 + 0.3 * Math.sin(time * 3 + k * 1.7));
+        g.fillStyle = hsl(P.sun2, 100, 66, 0.5 * (1 - f) * wO);
+        g.fillRect(sxc - hw, y - 1, hw * 2, 2 + f * 3);
+      }
+      g.globalAlpha = 1;
+    }
+    if (wT > 0.01) {
+      const step = 6, off = ((world.D % step) + step) % step, s0 = sc(0);
+      g.lineJoin = 'round';
+      for (let z = step - off; z < ZMAX; z += step) {
+        if (z < 0.5) continue;
+        const s = sc(z), cx = pX(z, 0), cy = pY(z, 1.4), Rr = 7.2 * s;
+        const a = wT * (1 - z / ZMAX) * (0.3 + 0.55 * world.beat + 0.25 * world.pre);
+        const rot = world.D * 0.004 + z * 0.03;
+        g.strokeStyle = hsl(P.acc + z * 2, 100, 65, a); g.lineWidth = Math.max(1, 4 * s / s0);
+        g.beginPath();
+        for (let q = 0; q <= 6; q++) { const an = rot + q * Math.PI / 3; const x = cx + Math.cos(an) * Rr, y = cy + Math.sin(an) * Rr * 0.92; q ? g.lineTo(x, y) : g.moveTo(x, y); }
+        g.stroke();
+      }
+    }
   }
 
   const ZS = [0, -1, 0, 1.2, 2.8, 5, 8, 12, 17, 23, 30, 37, ZMAX];
@@ -2141,8 +2753,8 @@ else PotokDSPFactory(self);
     lg.addColorStop(0, hsl(P.acc, 100, 60, 0)); lg.addColorStop(1, hsl(P.acc, 100, 60, 0.12 + 0.08 * world.beat));
     g.fillStyle = lg;
     g.beginPath();
-    g.moveTo(pX(ZNEAR, player.x - 1), pY(ZNEAR)); g.lineTo(pX(9, player.x - 1), pY(9));
-    g.lineTo(pX(9, player.x + 1), pY(9)); g.lineTo(pX(ZNEAR, player.x + 1), pY(ZNEAR));
+    g.moveTo(pX(ZNEAR, player.x - 1), pY(ZNEAR)); g.lineTo(pX(4, player.x - 1), pY(4)); g.lineTo(pX(9, player.x - 1), pY(9));
+    g.lineTo(pX(9, player.x + 1), pY(9)); g.lineTo(pX(4, player.x + 1), pY(4)); g.lineTo(pX(ZNEAR, player.x + 1), pY(ZNEAR));
     g.closePath(); g.fill();
     // поперечная сетка
     const step = 3, off = ((world.D % step) + step) % step;
@@ -2166,48 +2778,46 @@ else PotokDSPFactory(self);
         g.beginPath(); g.moveTo(pX(z0, X), pY(z0)); g.lineTo(pX(z1, X), pY(z1)); g.stroke();
       }
     }
-    // неоновые края
+    // неоновые края (в «Потоке» — радуга)
+    const fev = game && game.feverOn > 0;
     for (const X of [-3.3, 3.3]) {
       g.beginPath();
       for (let i = 0; i < ZS.length; i++) { const z = ZS[i]; i ? g.lineTo(pX(z, X), pY(z)) : g.moveTo(pX(z, X), pY(z)); }
-      g.strokeStyle = hsl(P.edge, 100, 62, 0.22 + 0.2 * world.beat); g.lineWidth = 10; g.stroke();
-      g.strokeStyle = hsl(P.edge, 100, 72, 1); g.lineWidth = 2.5; g.stroke();
+      const eh = fev ? P.edge + (lastRenderT * 240) % 360 : P.edge;
+      g.strokeStyle = hsl(eh, 100, 62, 0.22 + 0.2 * world.beat + (fev ? 0.25 : 0)); g.lineWidth = fev ? 16 : 10; g.stroke();
+      g.strokeStyle = hsl(eh, 100, 72, 1); g.lineWidth = fev ? 3.5 : 2.5; g.stroke();
     }
   }
 
   const drawList = [];
-  function drawObjects(hue) {
+  function drawObjects(hue, time) {
     drawList.length = 0;
     const D = world.D;
-    if (game && (state.screen === 'play' || state.screen === 'pause')) {
-      const lv = game.lv;
-      while (game.vs < lv.notes.length && lv.nd[game.vs] - D < ZNEAR - 1) game.vs++;
-      for (let i = game.vs; i < lv.notes.length && !game.check; i++) {
+    if (!(game && (state.screen === 'play' || state.screen === 'pause'))) return;
+    const lv = game.lv, G = game;
+    while (G.vs < lv.notes.length && Math.max(lv.nd[G.vs], lv.ne[G.vs]) - D < ZNEAR - 1) G.vs++;
+    if (!G.check) {
+      for (let i = G.vs; i < lv.notes.length; i++) {
         const z = lv.nd[i] - D;
         if (z > ZMAX) break;
-        if (game.ns[i] === 1) continue;
+        const n = lv.notes[i];
+        if (n.end) { drawList.push({ z: Math.max(z, 0), k: 4, i }); continue; }
+        if (G.ns[i] === 1) continue;
         drawList.push({ z, k: 0, i });
       }
-      for (let i = 0; i < lv.obstacles.length && !game.check; i++) {
-        const z = lv.od[i] - D;
-        if (z < ZNEAR - 1) continue;
-        if (z > ZMAX) break;
-        drawList.push({ z, k: 1, i });
-      }
-      for (let i = Math.max(0, game.pi - 4); i < lv.pulses.length; i++) {
-        const z = lv.pd[i] - D;
-        if (z < ZNEAR) continue;
-        if (z > ZMAX) break;
-        drawList.push({ z, k: 2, i });
-      }
-      drawList.sort((a, b) => b.z - a.z);
-      // линия мелодии — связывает ноты
+      for (let i = 0; i < lv.obstacles.length; i++) { const z = lv.od[i] - D; if (z < ZNEAR - 1) continue; if (z > ZMAX) break; drawList.push({ z, k: 1, i }); }
+      for (let i = 0; i < lv.rings.length; i++) { const z = lv.rd[i] - D; if (z < ZNEAR - 1) continue; if (z > ZMAX) break; drawList.push({ z, k: 3, i }); }
+      for (let i = 0; i < lv.barriers.length; i++) { const z = lv.bd[i] - D; if (z < ZNEAR - 1) continue; if (z > ZMAX) break; drawList.push({ z, k: 5, i }); }
+    }
+    for (let i = Math.max(0, G.pi - 4); i < lv.pulses.length; i++) { const z = lv.pd[i] - D; if (z < ZNEAR) continue; if (z > ZMAX) break; drawList.push({ z, k: 2, i }); }
+    drawList.sort((a, b) => b.z - a.z);
+    // линия мелодии — связывает ноты
+    if (!G.check) {
       g.globalCompositeOperation = 'lighter';
-      g.strokeStyle = hsl(P.acc, 100, 70, 0.16);
-      g.lineWidth = 2;
+      g.strokeStyle = hsl(P.acc, 100, 70, 0.16); g.lineWidth = 2;
       g.beginPath();
       let first = true;
-      for (let i = game.vs; i < lv.notes.length && !game.check; i++) {
+      for (let i = G.vs; i < lv.notes.length; i++) {
         const z = lv.nd[i] - D;
         if (z > ZMAX) break;
         if (z < 0) continue;
@@ -2222,28 +2832,29 @@ else PotokDSPFactory(self);
       const z = o.z, s = sc(z);
       let fade = z > ZMAX - 10 ? (ZMAX - z) / 10 : 1;
       if (o.k === 0) {
-        const n = game.lv.notes[o.i];
+        const n = lv.notes[o.i];
         if (z < 0) fade *= Math.max(0, 1 + z / 1.6);
         if (fade <= 0.01) continue;
         const kindS = n.kind === 'small' ? 1.0 : n.kind === 'big' ? 1.3 : 1.45;
         const size = s * kindS * (1.25 + 0.18 * world.beat) * (0.85 + 0.3 * n.s);
         const x = pX(z, laneX(n.lane)), y = pY(z, 0.55 + 0.08 * Math.sin(world.t * 4 + o.i));
         g.globalCompositeOperation = 'lighter';
-        g.globalAlpha = fade * (game.ns[o.i] === 2 ? 0.35 : 1);
+        g.globalAlpha = fade * (G.ns[o.i] === 2 ? 0.35 : 1);
         g.drawImage(glow(noteHue(n.kind), n.kind), x - size / 2, y - size / 2, size, size);
         g.globalAlpha = fade * 0.35;
         const ry = pY(z), rs = size * 0.9;
         g.drawImage(glow(noteHue(n.kind), 'small'), x - rs / 2, ry - rs * 0.12, rs, rs * 0.24);
         g.globalAlpha = 1;
         g.globalCompositeOperation = 'source-over';
-      } else if (o.k === 1) {
-        const ob = game.lv.obstacles[o.i];
-        const hit = game.os[o.i] === 1;
+      } else if (o.k === 4) drawRibbon(o.i, fade);
+      else if (o.k === 1) {
+        const ob = lv.obstacles[o.i];
         if (z < 0) fade *= Math.max(0, 1 + z / 1.2);
-        for (const l of ob.lanes) drawWall(z, laneX(l), fade, hit, s / s0);
-      } else {
-        const p = game.lv.pulses[o.i];
-        const dn = p[2] === 1;
+        for (const l of ob.lanes) drawWall(z, laneX(l), fade, G.os[o.i] === 1, s / s0);
+      } else if (o.k === 3) drawRing(o.i, z, fade, s / s0);
+      else if (o.k === 5) drawBarrier(o.i, z, fade, s / s0);
+      else {
+        const p = lv.pulses[o.i], dn = p[2] === 1;
         const a = fade * (dn ? 0.95 : 0.3 + 0.45 * p[1]) * (z < 0 ? Math.max(0, 1 + z / 1.5) : 1);
         const y = pY(z, 0.02);
         g.globalCompositeOperation = 'lighter';
@@ -2255,15 +2866,86 @@ else PotokDSPFactory(self);
       }
     }
   }
+  // лента: светящаяся полоса от начала до конца звука
+  function drawRibbon(i, fade) {
+    const G = game, lv = G.lv, n = lv.notes[i], D = world.D;
+    const z0 = Math.max(lv.nd[i] - D, G.ni > i ? 0 : ZNEAR), z1 = Math.min(lv.ne[i] - D, ZMAX);
+    if (z1 <= z0) return;
+    const X = laneX(n.lane), hue = noteHue('hold');
+    const active = G.ni > i && world.t < n.end, on = active && G.holdOn[i];
+    const missed = G.ns[i] === 2 && !on;
+    const steps = Math.max(2, Math.ceil((z1 - z0) / 2.5));
+    const L = [], R = [];
+    for (let q = 0; q <= steps; q++) { const z = z0 + (z1 - z0) * q / steps; L.push([pX(z, X - 0.42), pY(z, 0.06)]); R.push([pX(z, X + 0.42), pY(z, 0.06)]); }
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = fade * (missed ? 0.25 : on ? 0.9 : 0.6);
+    const gr = g.createLinearGradient(0, L[0][1], 0, L[L.length - 1][1]);
+    gr.addColorStop(0, hsl(hue, 100, on ? 75 : 62, 0.95)); gr.addColorStop(1, hsl(hue, 100, 55, 0.25));
+    g.fillStyle = gr;
+    g.beginPath(); L.forEach((p, q) => (q ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); for (let q = R.length - 1; q >= 0; q--) g.lineTo(R[q][0], R[q][1]); g.closePath(); g.fill();
+    g.strokeStyle = hsl(hue, 100, 85, 0.9); g.lineWidth = 2;
+    g.beginPath(); L.forEach((p, q) => (q ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.stroke();
+    g.beginPath(); R.forEach((p, q) => (q ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.stroke();
+    if (G.ni <= i) { const s = sc(z0), size = s * 1.6; const x = pX(z0, X), y = pY(z0, 0.4); g.drawImage(glow(hue, 'bass'), x - size / 2, y - size / 2, size, size); }
+    const se = sc(z1), ex = pX(z1, X), ey = pY(z1, 0.2), es = se * 1.1;
+    g.drawImage(glow(hue, 'small'), ex - es / 2, ey - es / 2, es, es);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+  }
+  // золотое кольцо: пролетаешь сквозь него и тапаешь ровно в момент удара
+  function drawRing(i, z, fade, k) {
+    const G = game, st = G.rs[i], r = G.lv.rings[i];
+    if (st === 1 || st === 2) return;
+    if (z < 0) fade *= Math.max(0, 1 + z / 1.4);
+    if (fade <= 0.01) return;
+    const s = sc(z), rad = (r.down ? 1.75 : 1.5) * s, cx = pX(z, 0), cy = pY(z, r.down ? 1.75 : 1.5);
+    const hue = st === 3 ? 0 : P.big, light = st === 3 ? 50 : 70;
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = fade * (st === 3 ? 0.3 : 1);
+    g.strokeStyle = hsl(hue, st === 3 ? 0 : 100, light, 0.35); g.lineWidth = Math.max(3, 16 * k);
+    g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = hsl(hue, st === 3 ? 0 : 100, light + 15, 1); g.lineWidth = Math.max(1.5, 4 * k);
+    g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.stroke();
+    // подсказка «тапни»: внутренний круг сжимается к моменту удара
+    if (z > 0 && z < 14 && !st) {
+      const q = z / 14;
+      g.strokeStyle = hsl(P.big, 100, 85, 0.5 * (1 - q)); g.lineWidth = Math.max(1, 2 * k);
+      g.beginPath(); g.arc(cx, cy, rad * (0.25 + 0.75 * (1 - q)), 0, Math.PI * 2); g.stroke();
+    }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+  }
+  // барьер: низкая лазерная планка во всю ширину — перепрыгни свайпом вверх
+  function drawBarrier(i, z, fade, k) {
+    const st = game.bs[i];
+    if (z < 0) fade *= Math.max(0, 1 + z / 1.2);
+    if (fade <= 0.01) return;
+    const hue = st === 1 ? 350 : P.acc, h = 0.65;
+    const xl = pX(z, -3.3), xr = pX(z, 3.3), yb = pY(z), yt = pY(z, h);
+    g.globalAlpha = fade * (st === 2 ? 0.35 : 1);
+    g.fillStyle = hsl(hue, 100, 55, 0.18); g.fillRect(xl, yt, xr - xl, yb - yt);
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = hsl(hue, 100, 65, 0.4); g.lineWidth = Math.max(3, 14 * k);
+    g.beginPath(); g.moveTo(xl, yt); g.lineTo(xr, yt); g.stroke();
+    g.strokeStyle = hsl(hue, 100, 85, 1); g.lineWidth = Math.max(1.5, 4 * k);
+    g.beginPath(); g.moveTo(xl, yt); g.lineTo(xr, yt); g.moveTo(xl, yt); g.lineTo(xl, yb); g.moveTo(xr, yt); g.lineTo(xr, yb); g.stroke();
+    // стрелки вверх
+    if (!st && z > 2) {
+      g.strokeStyle = hsl(hue, 100, 85, 0.8); g.lineWidth = Math.max(1.2, 3 * k);
+      g.beginPath();
+      for (const X of [-2, 0, 2]) { const x = pX(z, X), y = pY(z, h + 0.9), a = 0.35 * sc(z); g.moveTo(x - a, y + a * 0.7); g.lineTo(x, y); g.lineTo(x + a, y + a * 0.7); }
+      g.stroke();
+    }
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+  }
   function drawWall(z, X, fade, hit, k) {
     const h = 1.5, d = 0.6, x0 = X - 0.88, x1 = X + 0.88;
     const yb = pY(z), yt = pY(z, h), yb2 = pY(z + d, h);
     const ax = pX(z, x0), bx = pX(z, x1), cx2 = pX(z + d, x1), dx = pX(z + d, x0);
     g.globalAlpha = fade;
-    // крыша
     g.fillStyle = hit ? 'rgba(255,255,255,.25)' : 'rgba(255,90,120,.35)';
     g.beginPath(); g.moveTo(ax, yt); g.lineTo(bx, yt); g.lineTo(cx2, yb2); g.lineTo(dx, yb2); g.closePath(); g.fill();
-    // фасад
     const gr = g.createLinearGradient(0, yt, 0, yb);
     gr.addColorStop(0, hit ? 'rgba(255,255,255,.3)' : 'rgba(255,60,100,.55)'); gr.addColorStop(1, 'rgba(120,0,40,.35)');
     g.fillStyle = gr;
@@ -2282,48 +2964,53 @@ else PotokDSPFactory(self);
   }
 
   function drawPlayer(hue, time) {
-    const x = pX(0, player.x), y = pY(0, 0.45);
+    const hgt = player.h || 0;
+    const x = pX(0, player.x), y = pY(0, 0.45 + hgt);
     const S = LANE * 0.42;
-    const acc = P.acc;
+    const fev = game && game.feverOn > 0;
+    const acc = fev ? P.acc + (time * 300) % 360 : P.acc;
     const blink = player.hitT > 0 && Math.floor(time * 18) % 2 === 0;
-    // свечение на дороге
+    // тень на дороге (меньше и бледнее в прыжке)
     g.globalCompositeOperation = 'lighter';
-    g.globalAlpha = 0.55;
-    g.drawImage(glow(acc, 'small'), x - S * 1.4, pY(0) - S * 0.35, S * 2.8, S * 0.7);
+    g.globalAlpha = 0.55 / (1 + hgt);
+    const shw = S * 2.8 / (1 + hgt * 0.4);
+    g.drawImage(glow(acc, 'small'), x - shw / 2, pY(0) - S * 0.35, shw, S * 0.7);
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
     if (blink) return;
     g.save();
     g.translate(x, y);
     g.rotate(player.tilt);
-    // пламя
-    const fl = S * (0.35 + 0.35 * (spec[6] || 0.3) + 0.15 * Math.random());
+    const sc2 = 1 + hgt * 0.12;
+    g.scale(sc2, sc2);
+    const fl = S * (0.35 + 0.35 * (spec[6] || 0.3) + 0.15 * Math.random()) * (fev ? 1.6 : 1);
     g.globalCompositeOperation = 'lighter';
-    g.drawImage(glow(P.edge, 'small'), -S * 0.45, S * 0.05, S * 0.9, fl + S * 0.4);
+    g.drawImage(glow(fev ? P.big : P.edge, 'small'), -S * 0.45, S * 0.05, S * 0.9, fl + S * 0.4);
+    if (fev) { g.globalAlpha = 0.6; g.drawImage(glow(acc, 'small'), -S * 1.3, -S * 1.1, S * 2.6, S * 2.6); g.globalAlpha = 1; }
     g.globalCompositeOperation = 'source-over';
-    // корпус
     g.beginPath();
-    g.moveTo(0, -S * 0.62);
-    g.lineTo(S * 0.78, S * 0.36);
-    g.lineTo(S * 0.18, S * 0.2);
-    g.lineTo(0, S * 0.34);
-    g.lineTo(-S * 0.18, S * 0.2);
-    g.lineTo(-S * 0.78, S * 0.36);
-    g.closePath();
+    g.moveTo(0, -S * 0.62); g.lineTo(S * 0.78, S * 0.36); g.lineTo(S * 0.18, S * 0.2); g.lineTo(0, S * 0.34);
+    g.lineTo(-S * 0.18, S * 0.2); g.lineTo(-S * 0.78, S * 0.36); g.closePath();
     const gr = g.createLinearGradient(0, -S * 0.6, 0, S * 0.4);
     gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, hsl(acc, 100, 55));
     g.fillStyle = gr; g.fill();
     g.lineJoin = 'round';
     g.strokeStyle = hsl(acc, 100, 80, 0.9); g.lineWidth = 2; g.stroke();
-    // кабина
     g.beginPath(); g.moveTo(0, -S * 0.3); g.lineTo(S * 0.12, S * 0.05); g.lineTo(-S * 0.12, S * 0.05); g.closePath();
     g.fillStyle = hsl(hue, 80, 18); g.fill();
     g.restore();
   }
 
-  function drawFx(hue) {
+  function drawFx(hue, dt) {
+    // «Поток»: искры летят с краёв дороги
+    if (game && game.feverOn > 0 && state.screen === 'play') {
+      for (let q = 0; q < 2; q++) {
+        const side = Math.random() < 0.5 ? -3.3 : 3.3, z = Math.random() * 6;
+        burst(pX(z, side), pY(z, 0.1), P.acc + Math.random() * 360, 1, 220);
+      }
+    }
     g.globalCompositeOperation = 'lighter';
-    for (const r of rings) {
+    for (const r of fxRings) {
       const k = r.life / r.max;
       g.strokeStyle = hsl(r.hue, 100, 70, 1 - k);
       g.lineWidth = 3 * (1 - k) + 1;
@@ -2354,8 +3041,8 @@ else PotokDSPFactory(self);
     for (const p of popups) {
       const k = 1 - p.life / p.max;
       g.globalAlpha = Math.min(1, k * 1.6);
-      g.font = (p.big ? '800 26px ' : '700 17px ') + 'Unbounded, system-ui, sans-serif';
-      g.fillStyle = p.hue === 350 ? '#ff5c7f' : hsl(p.hue, 100, 82);
+      g.font = (p.big ? '800 24px ' : '700 17px ') + 'Unbounded, system-ui, sans-serif';
+      g.fillStyle = p.hue === 350 ? '#ff5c7f' : p.hue === 0 ? 'rgba(255,255,255,.7)' : hsl(p.hue, 100, 82);
       g.fillText(p.text, p.x, p.y);
     }
     g.globalAlpha = 1;
@@ -2373,79 +3060,103 @@ else PotokDSPFactory(self);
       vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.55)');
     }
     g.fillStyle = vig; g.fillRect(0, 0, W, H);
-    // титр перед стартом и обратный отсчёт после паузы
-    if (game && state.screen === 'play' && !game.finished) {
-      g.textAlign = 'center';
-      if (game.resumeAt) {
-        const left = Math.max(0, (game.resumeAt - performance.now()) / 1000);
-        g.font = '900 72px Unbounded, system-ui, sans-serif';
-        g.fillStyle = 'rgba(255,255,255,.92)';
-        g.fillText(String(Math.ceil(left / 0.45)), CX, HY + 30);
-      } else if (world.t < 0.2) {
-        const t = world.t;
-        const a = clamp((t + game.lead) * 2, 0, 1) * clamp((0.2 - t) * 2, 0, 1);
-        g.globalAlpha = a;
-        g.font = '800 ' + Math.round(clamp(W * 0.065, 20, 34)) + 'px Unbounded, system-ui, sans-serif';
-        g.fillStyle = '#fff';
-        const title = state.track ? state.track.title : '';
-        g.fillText(title.length > 28 ? title.slice(0, 27) + '…' : title, CX, HY + H * 0.12);
-        g.font = '600 16px Manrope, system-ui, sans-serif';
-        g.fillStyle = hsl(P.acc, 100, 75);
-        const an0 = game.an, lo = Math.round(an0.bpmMin || an0.bpm), hi = Math.round(an0.bpmMax || an0.bpm);
-        g.fillText((game.check ? 'Проверка бита' : MODE_NAME[game.mode]) + ' · ' + (hi - lo > 3 ? lo + '–' + hi : Math.round(an0.bpm)) + ' BPM', CX, HY + H * 0.12 + 30);
-        g.globalAlpha = 1;
+    // перед дропом мир затихает и темнеет к краям
+    if (world.pre > 0.01) { g.globalAlpha = world.pre * 0.8; g.fillStyle = vig; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+    if (!(game && state.screen === 'play' && !game.finished)) return;
+    g.textAlign = 'center';
+    if (game.resumeAt) {
+      const left = Math.max(0, (game.resumeAt - performance.now()) / 1000);
+      g.font = '900 72px Unbounded, system-ui, sans-serif';
+      g.fillStyle = 'rgba(255,255,255,.92)';
+      g.fillText(String(Math.ceil(left / 0.45)), CX, HY + 30);
+      return;
+    }
+    const t = world.t;
+    // титр трека: в начале и (в сете) при смене трека
+    let title = null, sub = null, a = 0;
+    if (t < 0.2) {
+      a = clamp((t + game.lead) * 2, 0, 1) * clamp((0.2 - t) * 2, 0, 1);
+      title = state.track ? state.track.title : '';
+      const an0 = game.an, lo = Math.round(an0.bpmMin || an0.bpm), hi = Math.round(an0.bpmMax || an0.bpm);
+      sub = (game.check ? 'Проверка бита' : MODE_NAME[game.mode]) + ' · ' + (hi - lo > 3 ? lo + '–' + hi : Math.round(an0.bpm)) + ' BPM';
+    } else if (game.set && game.lv.trackStarts) {
+      for (let q = 1; q < game.lv.trackStarts.length; q++) {
+        const ts = game.lv.trackStarts[q], d = t - ts.t;
+        if (d > -0.3 && d < 2.6) {
+          a = clamp((d + 0.3) * 3, 0, 1) * clamp((2.6 - d) * 1.5, 0, 1);
+          title = ts.title; sub = 'Трек ' + (q + 1) + ' из ' + game.lv.trackStarts.length + (ts.bpm ? ' · ' + Math.round(ts.bpm) + ' BPM' : '');
+        }
       }
+    }
+    if (title != null && a > 0.01) {
+      g.globalAlpha = a;
+      g.font = '800 ' + Math.round(clamp(W * 0.065, 20, 34)) + 'px Unbounded, system-ui, sans-serif';
+      g.fillStyle = '#fff';
+      g.fillText(title.length > 28 ? title.slice(0, 27) + '…' : title, CX, HY + H * 0.12);
+      g.font = '600 16px Manrope, system-ui, sans-serif';
+      g.fillStyle = hsl(P.acc, 100, 75);
+      g.fillText(sub, CX, HY + H * 0.12 + 30);
+      g.globalAlpha = 1;
     }
   }
 
   // ---------- ввод ----------
-  const drag = { id: null, x0: 0, lx: 0, t0: 0, moved: false };
-  function dStart(id, x) {
+  // тап — кольцо (если оно рядом) или шаг на полосу; смахивание в сторону — ровно одна полоса;
+  // ведение пальцем — плавно; свайп вверх — прыжок или включение «Потока»
+  const drag = { id: null, x0: 0, y0: 0, lx: 0, t0: 0, moved: false, swiped: false, lane0: 0, tapUsed: false };
+  function dStart(id, x, y, ts) {
     if (state.screen !== 'play') return;
-    drag.id = id; drag.x0 = drag.lx = x; drag.t0 = performance.now(); drag.moved = false;
+    drag.id = id; drag.x0 = drag.lx = x; drag.y0 = y; drag.t0 = performance.now();
+    drag.moved = false; drag.swiped = false; drag.lane0 = nearestLane(player.tx);
+    drag.tapUsed = tapBeat(ts);
   }
-  function dMove(id, x) {
+  function dMove(id, x, y) {
     if (id !== drag.id || state.screen !== 'play') return;
     const dx = x - drag.lx; drag.lx = x;
-    if (Math.abs(x - drag.x0) > 12) drag.moved = true;
-    if (settings.tilt || !drag.moved) return;
+    const dxa = x - drag.x0, dya = y - drag.y0;
+    if (!drag.swiped && dya < -42 && Math.abs(dya) > 1.3 * Math.abs(dxa) && performance.now() - drag.t0 < 450) { drag.swiped = true; swipeUp(); return; }
+    if (Math.abs(dxa) > 12) drag.moved = true;
+    if (settings.tilt || !drag.moved || drag.swiped) return;
     player.tx = clamp(player.tx + dx / (LANE * 1.05) * 2 * settings.sens, -2.35, 2.35);
   }
   let lastTapT = 0, lastTapDir = 0;
   function dEnd(id, x, cancel) {
     if (id !== drag.id) return;
     drag.id = null;
-    if (state.screen !== 'play' || settings.tilt) return;
-    const now = performance.now();
-    if (!cancel && !drag.moved && now - drag.t0 < 300) {
+    if (state.screen !== 'play' || settings.tilt || drag.swiped) return;
+    const now = performance.now(), dur = now - drag.t0, dxa = x - drag.x0;
+    // короткое смахивание (даже медленное) — ровно на соседнюю полосу
+    if (!cancel && drag.moved && Math.abs(dxa) >= 28) {
+      let target = nearestLane(player.tx);
+      if (target === drag.lane0) target = clamp(drag.lane0 + Math.sign(dxa) * 2, -2, 2);
+      player.tx = target; return;
+    }
+    if (!cancel && !drag.moved && dur < 300) {
+      if (drag.tapUsed) return;
       const dir = x < W / 2 ? -1 : 1;
-      // защита от дребезга: один и тот же тап, пришедший дважды за 60 мс, не считаем
       if (now - lastTapT < 60 && dir === lastTapDir) return;
       lastTapT = now; lastTapDir = dir;
       player.tx = clamp(nearestLane(player.tx) + dir * 2, -2, 2);
     } else player.tx = nearestLane(player.tx);
   }
-  // пальцы: touch-события с preventDefault — никакого зума, прокрутки и «призрачных» кликов
   const tid = (t) => 't' + t.identifier;
   cv.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    if (drag.id !== null && e.touches.length > 1) return; // второй палец не перехватывает управление
-    dStart(tid(t), t.clientX);
+    if (drag.id !== null && e.touches.length > 1) { tapBeat(e.timeStamp); return; } // второй палец — только тап по кольцу
+    dStart(tid(t), t.clientX, t.clientY, e.timeStamp);
   }, { passive: false });
-  cv.addEventListener('touchmove', (e) => { e.preventDefault(); for (const t of e.changedTouches) dMove(tid(t), t.clientX); }, { passive: false });
+  cv.addEventListener('touchmove', (e) => { e.preventDefault(); for (const t of e.changedTouches) dMove(tid(t), t.clientX, t.clientY); }, { passive: false });
   cv.addEventListener('touchend', (e) => { e.preventDefault(); for (const t of e.changedTouches) dEnd(tid(t), t.clientX, false); }, { passive: false });
   cv.addEventListener('touchcancel', (e) => { for (const t of e.changedTouches) dEnd(tid(t), t.clientX, true); });
-  // мышь и стилус
   cv.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') return;
-    dStart('p' + e.pointerId, e.clientX);
+    dStart('p' + e.pointerId, e.clientX, e.clientY, e.timeStamp);
     try { cv.setPointerCapture(e.pointerId); } catch (err) { /* */ }
   });
-  cv.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') dMove('p' + e.pointerId, e.clientX); });
+  cv.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') dMove('p' + e.pointerId, e.clientX, e.clientY); });
   cv.addEventListener('pointerup', (e) => { if (e.pointerType !== 'touch') dEnd('p' + e.pointerId, e.clientX, false); });
   cv.addEventListener('pointercancel', (e) => { if (e.pointerType !== 'touch') dEnd('p' + e.pointerId, e.clientX, true); });
-  // глобально: двойной тап, щипок и долгое нажатие не зумят и не выделяют страницу
   document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
   document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
   document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
@@ -2463,7 +3174,9 @@ else PotokDSPFactory(self);
     if (state.screen === 'play') {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') { player.tx = clamp(nearestLane(player.tx) - 2, -2, 2); e.preventDefault(); }
       else if (e.code === 'ArrowRight' || e.code === 'KeyD') { player.tx = clamp(nearestLane(player.tx) + 2, -2, 2); e.preventDefault(); }
-      else if (e.code === 'Escape' || e.code === 'KeyP' || e.code === 'Space') { pauseGame(); e.preventDefault(); }
+      else if (e.code === 'Space' || e.code === 'KeyJ' || e.code === 'KeyK') { if (!e.repeat) tapBeat(e.timeStamp); e.preventDefault(); }
+      else if (e.code === 'ArrowUp' || e.code === 'KeyW') { if (!e.repeat) swipeUp(); e.preventDefault(); }
+      else if (e.code === 'Escape' || e.code === 'KeyP') { pauseGame(); e.preventDefault(); }
     } else if (state.screen === 'pause' && (e.code === 'Escape' || e.code === 'Space')) { resumeGame(); e.preventDefault(); }
   });
   let tiltVal = null, tiltOn = false;
@@ -2589,7 +3302,7 @@ else PotokDSPFactory(self);
       const buf = await decode(ab.slice(0));
       let an = null;
       const cached = await idb.get('data', id);
-      if (cached && cached.an && cached.an.v === 3) an = cached.an;
+      if (cached && cached.an && cached.an.v === 4) an = cached.an;
       if (!an) {
         setLoad(0.1, STAGE.listen); await nextFrame();
         const prep = DSP.prepare(channelsOf(buf), buf.sampleRate);
@@ -2629,35 +3342,36 @@ else PotokDSPFactory(self);
       buf.getChannelData(0).set(d.channels[0]); buf.getChannelData(1).set(d.channels[1]);
       setLoad(0.15, 'Слушаю бит…', 'Анализ идёт прямо на устройстве');
       const an = await analyzeAsync(DSP.prepare(d.channels, d.sr), (p, st) => setLoad(0.15 + p * 0.83, STAGE[st]));
-      demoCache = { id: 'demo-neon-2', title: 'Неоновая трасса', artist: 'Демо от Потока', buf, an, source: 'demo' };
+      demoCache = { id: 'demo-neon-3', title: 'Неоновая трасса', artist: 'Демо от Потока', buf, an, source: 'demo' };
       openTrack(demoCache);
     } catch (e) { console.error(e); toast('Не получилось собрать демо.'); show('home'); }
+  }
+  async function fetchBytes(token, onProg) {
+    const r = await fetch(CONFIG.api + '/track/' + encodeURIComponent(token));
+    if (!r.ok) throw new Error('http ' + r.status);
+    const total = +r.headers.get('content-length') || 0;
+    const hdr = (k) => { const v = r.headers.get(k); try { return v ? decodeURIComponent(v) : null; } catch (e) { return null; } };
+    let ab;
+    if (r.body && r.body.getReader && total) {
+      const rd = r.body.getReader(); const chunks = []; let got = 0;
+      for (;;) {
+        const { done, value } = await rd.read();
+        if (done) break;
+        chunks.push(value); got += value.length;
+        if (onProg) onProg(got / total);
+      }
+      const u = new Uint8Array(got); let o = 0;
+      for (const c of chunks) { u.set(c, o); o += c.length; }
+      ab = u.buffer;
+    } else ab = await r.arrayBuffer();
+    return { ab, title: hdr('X-Track-Title'), artist: hdr('X-Track-Artist') };
   }
   async function fetchTrack(token, meta) {
     show('loading');
     setLoad(0.02, 'Скачиваю трек…', meta && meta.title ? meta.title : '');
     try {
-      const r = await fetch(CONFIG.api + '/track/' + encodeURIComponent(token));
-      if (!r.ok) throw new Error('http ' + r.status);
-      const total = +r.headers.get('content-length') || 0;
-      const hdr = (k) => { const v = r.headers.get(k); try { return v ? decodeURIComponent(v) : null; } catch (e) { return null; } };
-      meta = Object.assign({}, meta || {});
-      if (!meta.title) meta.title = hdr('X-Track-Title');
-      if (!meta.artist) meta.artist = hdr('X-Track-Artist');
-      let ab;
-      if (r.body && r.body.getReader && total) {
-        const rd = r.body.getReader(); const chunks = []; let got = 0;
-        for (;;) {
-          const { done, value } = await rd.read();
-          if (done) break;
-          chunks.push(value); got += value.length;
-          setLoad(0.02 + 0.3 * got / total);
-        }
-        const u = new Uint8Array(got); let o = 0;
-        for (const c of chunks) { u.set(c, o); o += c.length; }
-        ab = u.buffer;
-      } else ab = await r.arrayBuffer();
-      await loadBytes(ab, { source: 'tg', token, title: meta && meta.title, artist: meta && meta.artist });
+      const f = await fetchBytes(token, (p) => setLoad(0.02 + 0.3 * p));
+      await loadBytes(f.ab, { source: 'tg', token, title: (meta && meta.title) || f.title, artist: (meta && meta.artist) || f.artist });
     } catch (e) {
       console.error(e);
       toast('Не удалось скачать трек. Перешли его боту ещё раз.');
@@ -2665,9 +3379,84 @@ else PotokDSPFactory(self);
     }
   }
 
+  // ---------- сет: несколько треков подряд ----------
+  let tgTracks = [], libTracks = [], setAvail = [], setPick = [];
+  function updateSetBtn() {
+    const n = tgTracks.length + libTracks.filter((m) => m.hasBytes).length;
+    $('#setOpenBtn').hidden = n < 2;
+  }
+  function openSetPicker() {
+    setAvail = [
+      ...tgTracks.map((t) => ({ key: 'tg:' + t.token, title: t.title || 'Без названия', artist: t.artist || '', dur: t.duration || 0, token: t.token })),
+      ...libTracks.filter((m) => m.hasBytes).map((m) => ({ key: 'id:' + m.id, title: m.title, artist: m.artist || '', dur: m.dur || 0, id: m.id })),
+    ];
+    setPick = setPick.filter((k) => setAvail.some((a) => a.key === k));
+    renderSetList();
+    show('set');
+  }
+  function renderSetList() {
+    $('#setList').innerHTML = setAvail.map((a) => {
+      const n = setPick.indexOf(a.key);
+      return '<li><button class="item pick' + (n >= 0 ? ' on' : '') + '" data-key="' + esc(a.key) + '"><span class="num">' + (n >= 0 ? n + 1 : '') + '</span><span class="t"><b>' + esc(a.title) + '</b><small>' + esc(a.artist) + '</small></span><span class="d">' + esc(a.dur ? fmtTime(a.dur) : '') + '</span></button></li>';
+    }).join('');
+    $$('#setList [data-key]').forEach((b) => b.addEventListener('click', () => {
+      const k = b.dataset.key, i = setPick.indexOf(k);
+      if (i >= 0) setPick.splice(i, 1); else if (setPick.length < 6) setPick.push(k); else toast('В сете до 6 треков');
+      haptic('ui'); renderSetList();
+    }));
+    const total = setPick.reduce((a, k) => a + ((setAvail.find((x) => x.key === k) || {}).dur || 0), 0);
+    const btn = $('#setGoBtn');
+    btn.disabled = setPick.length < 2;
+    btn.textContent = setPick.length < 2 ? 'Выбери хотя бы два трека' : 'Собрать сет · ' + setPick.length + ' ' + plural(setPick.length, 'трек', 'трека', 'треков') + (total ? ' · ' + fmtTime(total) : '');
+  }
+  async function buildSet() {
+    const items = setPick.map((k) => setAvail.find((a) => a.key === k)).filter(Boolean);
+    if (items.length < 2) return;
+    ensureCtx(true);
+    show('loading');
+    const parts = [];
+    for (let k = 0; k < items.length; k++) {
+      const it = items[k], base = k / items.length, span = 1 / items.length;
+      setLoad(base + 0.02, 'Готовлю сет: ' + (k + 1) + ' из ' + items.length, it.title);
+      try {
+        let bytes, title = it.title, artist = it.artist;
+        if (it.token) { const f = await fetchBytes(it.token, (p) => setLoad(base + span * 0.3 * p)); bytes = f.ab; }
+        else { const d = await idb.get('data', it.id); bytes = d && d.bytes; }
+        if (!bytes) continue;
+        const id = await hashBytes(bytes);
+        let an = null;
+        const cached = await idb.get('data', id);
+        if (cached && cached.an && cached.an.v === 4) an = cached.an;
+        if (!an) {
+          const buf = await decode(bytes.slice(0));
+          const prep = DSP.prepare(channelsOf(buf), buf.sampleRate);
+          an = await analyzeAsync(prep, (p) => setLoad(base + span * (0.3 + 0.7 * p)));
+          await idb.put('data', { id, an, bytes: it.token ? null : bytes });
+        }
+        parts.push({ an, id, title, artist, bytes });
+      } catch (e) { console.error(e); }
+    }
+    if (parts.length < 2) { toast('Не получилось собрать сет — нужно хотя бы два трека.'); show('home'); return; }
+    setLoad(1, 'Склеиваю трассу…');
+    await nextFrame();
+    const m = DSP.mergeSet(parts, state.mode);
+    const tr = {
+      id: 'set-' + parts.map((p) => p.id.slice(0, 6)).join('-'), title: 'Сет из ' + parts.length + ' ' + plural(parts.length, 'трека', 'треков', 'треков'),
+      artist: parts.map((p) => p.title).join(' · '), an: m.an, source: 'set', levels: {}, set: { parts, segs: m.segs, bufs: {} },
+    };
+    tr.levels[DSP.normMode(state.mode)] = prepLevel(m.lv);
+    openTrack(tr);
+  }
+
   // ---------- рекорды ----------
   const records = ls.get('records') || {};
-  const getRecord = (id) => (records[id] = records[id] || {});
+  const getRecord = (id) => {
+    const r = (records[id] = records[id] || {});
+    if (r.vibe && !r.easy) r.easy = r.vibe;
+    if (r.challenge && !r.normal) r.normal = r.challenge;
+    return r;
+  };
+  const MODES = ['easy', 'normal', 'hard', 'expert'];
   function setRecord(id, rec) { records[id] = rec; ls.set('records', records); cloud.set('r_' + id.slice(0, 24), rec); }
   async function syncRecord(id) {
     const v = await cloud.get(['r_' + id.slice(0, 24)]);
@@ -2675,7 +3464,7 @@ else PotokDSPFactory(self);
       const c = JSON.parse(v['r_' + id.slice(0, 24)] || 'null');
       if (!c) return;
       const r = getRecord(id);
-      for (const m of ['vibe', 'challenge']) if (c[m] && (!r[m] || c[m].score > r[m].score)) r[m] = c[m];
+      for (const m of MODES) if (c[m] && (!r[m] || c[m].score > r[m].score)) r[m] = c[m];
       ls.set('records', records);
       if (state.screen === 'track') renderRecs();
     } catch (e) { /* */ }
@@ -2703,7 +3492,7 @@ else PotokDSPFactory(self);
   }
   async function loadTop(el, mode) {
     el.hidden = true;
-    if (!api.on() || !state.track) return;
+    if (!api.on() || !state.track || state.track.set) return;
     try { renderTop(el, await api.req('/api/top?track=' + encodeURIComponent(state.track.id) + '&mode=' + mode)); } catch (e) { /* без таблицы */ }
   }
   async function submitScore(res) {
@@ -2722,6 +3511,7 @@ else PotokDSPFactory(self);
     try {
       const data = await api.req('/api/my-tracks');
       const list = (data && data.tracks) || [];
+      tgTracks = list; updateSetBtn();
       if (!list.length) { ul.innerHTML = '<li class="dim">Пока пусто. Открой чат с ботом и перешли туда трек.</li>'; return; }
       ul.innerHTML = list.map((t) => '<li><button class="item" data-token="' + esc(t.token) + '"><span class="dot"></span><span class="t"><b>' + esc(t.title || 'Без названия') + '</b><small>' + esc(t.artist || '') + '</small></span><span class="d">' + esc(t.duration ? fmtTime(t.duration) : '') + '</span></button></li>').join('');
       $$('#tgList [data-token]').forEach((b, i) => b.addEventListener('click', () => { ensureCtx(true); fetchTrack(list[i].token, list[i]); }));
@@ -2729,6 +3519,7 @@ else PotokDSPFactory(self);
   }
   async function refreshLibrary() {
     const all = ((await idb.all('meta')) || []).filter((m) => m.source === 'file').sort((a, b) => b.at - a.at);
+    libTracks = all; updateSetBtn();
     const block = $('#libBlock');
     block.hidden = !all.length;
     if (!all.length) return;
@@ -2760,10 +3551,11 @@ else PotokDSPFactory(self);
     else if (s === 'results') openTrack(state.track);
     else if (s === 'settings') show(state.settingsFrom || 'home');
     else if (s === 'calib') openSettings(state.settingsFrom);
+    else if (s === 'set') show('home');
     else show('home');
   }
   function applyMode(m) {
-    state.mode = m === 'challenge' ? 'challenge' : 'vibe';
+    state.mode = DSP.normMode(m);
     $$('.modeSeg button').forEach((b) => { const on = b.dataset.mode === state.mode; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
     $$('.modeHint').forEach((p) => { p.textContent = MODE_HINT[state.mode]; });
   }
@@ -2785,15 +3577,18 @@ else PotokDSPFactory(self);
       '<span><b>' + nSec + '</b> ' + plural(nSec, 'часть', 'части', 'частей') + '</span>' +
       (an.drops.length ? '<span><b>' + an.drops.length + '</b> ' + plural(an.drops.length, 'дроп', 'дропа', 'дропов') + '</span>' : '');
     renderRecs();
+    $('#checkBtn').hidden = !!tr.set;
+    $('#checkHint').hidden = !!tr.set;
+    $('#trRecs').hidden = !!tr.set;
     show('track');
     requestAnimationFrame(drawMap);
     loadTop($('#trTop'), state.mode);
-    syncRecord(tr.id);
+    if (!tr.set) syncRecord(tr.id);
   }
   function plural(n, a, b, c) { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c; }
   function renderRecs() {
     const r = state.track ? getRecord(state.track.id) : {};
-    $('#trRecs').innerHTML = ['vibe', 'challenge'].map((m) => '<div class="rec' + (m === state.mode ? ' on' : '') + '"><small>Рекорд · ' + MODE_NAME[m] + '</small><b>' + (r[m] ? esc(fmtNum(r[m].score)) + ' · ' + esc(r[m].grade) : '—') + '</b></div>').join('');
+    $('#trRecs').innerHTML = MODES.map((m) => '<div class="rec' + (m === state.mode ? ' on' : '') + '"><small>Рекорд · ' + MODE_NAME[m] + '</small><b>' + (r[m] ? esc(fmtNum(r[m].score)) + ' · ' + esc(r[m].grade) : '—') + '</b></div>').join('');
   }
   const SEC_SHORT = { intro: 'Вступл.', main: 'Основа', build: 'Разгон', drop: 'Дроп', break: 'Брейк', outro: 'Финал' };
   function drawMap() {
@@ -2829,7 +3624,7 @@ else PotokDSPFactory(self);
     x.font = '600 12px Manrope, system-ui, sans-serif'; x.textAlign = 'left'; x.textBaseline = 'middle';
     secs.forEach((sct, k) => {
       const x0 = sct.t0 / dur * w, x1 = Math.min(w, sct.t1 / dur * w);
-      if (k > 0) { x.strokeStyle = 'rgba(255,255,255,.55)'; x.setLineDash([3, 3]); x.lineWidth = 1; x.beginPath(); x.moveTo(x0, 4); x.lineTo(x0, h); x.stroke(); x.setLineDash([]); }
+      if (k > 0) { const tb = sct.track != null; x.strokeStyle = tb ? '#fff' : 'rgba(255,255,255,.55)'; x.setLineDash(tb ? [] : [3, 3]); x.lineWidth = tb ? 2 : 1; x.beginPath(); x.moveTo(x0, 4); x.lineTo(x0, h); x.stroke(); x.setLineDash([]); }
       const label = SEC_SHORT[sct.type] || '';
       const tw = x.measureText(label).width;
       if (x1 - x0 > tw + 8) { x.fillStyle = sct.type === 'drop' ? '#fff' : 'rgba(255,255,255,.72)'; x.fillText(label, x0 + 4, 11); }
@@ -2848,15 +3643,19 @@ else PotokDSPFactory(self);
     $('#resGrade').textContent = res.grade;
     $('#resScore').textContent = fmtNum(res.score);
     $('#resNew').hidden = !res.isNew;
+    $('#switchBtn').hidden = !!res.set;
     const st = [
       ['Точность', Math.round(res.acc * 100) + '%'],
       ['Макс. комбо', fmtNum(res.maxCombo)],
       ['Нот собрано', res.got + ' из ' + res.total],
     ];
-    if (res.mode === 'challenge') st.push(['Стен задето', res.hits + ' из ' + res.walls]);
+    if (res.rings) st.push(['Кольца', res.perfect + ' идеально · ' + res.good + ' хорошо']);
+    if (res.holdsTotal) st.push(['Ленты', res.holds + ' из ' + res.holdsTotal]);
+    if (res.barriers) st.push(['Прыжки', res.jumps + ' из ' + res.barriers]);
+    if (res.mode !== 'easy') st.push(['Столкновений', String(res.hits)]);
     else st.push(['Длина', fmtTime(res.full)]);
     $('#resStats').innerHTML = st.map(([a, b]) => '<div><small>' + esc(a) + '</small><b>' + esc(b) + '</b></div>').join('');
-    $('#switchBtn').textContent = 'Другой режим';
+    $('#switchBtn').textContent = res.mode === 'expert' ? 'Снова с Лёгкого' : 'Сложнее: ' + MODE_NAME[MODES[MODES.indexOf(res.mode) + 1]];
     $('#resTop').hidden = true;
     show('results');
     if (state.pendingTop) { renderTop($('#resTop'), state.pendingTop); state.pendingTop = null; }
@@ -3049,6 +3848,9 @@ else PotokDSPFactory(self);
   $('#demoBtn').addEventListener('click', loadDemo);
   $('#setBtn').addEventListener('click', () => openSettings('home'));
   $('#playBtn').addEventListener('click', () => startGame(false));
+  $('#feverBtn').addEventListener('click', () => { activateFever(); });
+  $('#setOpenBtn').addEventListener('click', openSetPicker);
+  $('#setGoBtn').addEventListener('click', buildSet);
   $('#checkBtn').addEventListener('click', () => startGame(true));
   $('#otherBtn').addEventListener('click', () => { show('home'); refreshLibrary(); });
   $('#pauseBtn').addEventListener('click', pauseGame);
@@ -3056,7 +3858,7 @@ else PotokDSPFactory(self);
   $('#restartBtn').addEventListener('click', () => { try { A.ctx.resume(); } catch (e) { /* */ } startGame(!!(game && game.check)); });
   $('#quitBtn').addEventListener('click', quitToTrack);
   $('#againBtn').addEventListener('click', () => startGame(false));
-  $('#switchBtn').addEventListener('click', () => { applyMode(state.mode === 'vibe' ? 'challenge' : 'vibe'); settings.mode = state.mode; saveSettings(); startGame(false); });
+  $('#switchBtn').addEventListener('click', () => { const k = MODES.indexOf(state.mode); applyMode(MODES[Math.min(MODES.length - 1, k + 1)] === state.mode ? MODES[0] : MODES[k + 1]); settings.mode = state.mode; saveSettings(); startGame(false); });
   $('#toTrackBtn').addEventListener('click', () => openTrack(state.track));
   $('#shareBtn').addEventListener('click', shareResult);
   $('#offRange').addEventListener('input', (e) => { settings.offset = +e.target.value; $('#offOut').textContent = settings.offset + ' мс'; saveSettings(); });
@@ -3099,7 +3901,7 @@ else PotokDSPFactory(self);
     } catch (e) { /* */ }
     if (token && CONFIG.server) fetchTrack(token, { title, artist });
   }
-  window.__potok = { state, world, player, get game() { return game; }, get usedWorker() { return usedWorker; }, settings, loadDemo, startGame, finish };
+  window.__potok = { state, world, player, get game() { return game; }, get usedWorker() { return usedWorker; }, settings, loadDemo, startGame, finish, tapBeat, swipeUp, applyMode };
 }
 </script>
 </body>
