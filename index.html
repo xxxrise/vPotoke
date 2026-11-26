@@ -140,6 +140,16 @@ details.how ul{margin:8px 0 0;padding-left:18px;color:var(--mut);font-size:15px;
 .score{text-align:center;font:800 clamp(30px,9vw,44px)/1 var(--disp)}
 .newrec{justify-self:center;padding:5px 12px;border-radius:999px;background:var(--a3);color:#1a0f00;font:700 13px var(--disp)}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats div{animation:fadeUp .45s both;animation-delay:calc(.55s + var(--i,0) * 70ms)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.grade.pop{animation:gradePop .7s cubic-bezier(.2,.9,.3,1.25) both}
+@keyframes gradePop{0%{transform:scale(2.6) rotate(-8deg);opacity:0;filter:blur(10px)}55%{transform:scale(.9) rotate(2deg);opacity:1;filter:blur(0)}100%{transform:none}}
+.grade.gS{background:linear-gradient(110deg,var(--a3) 20%,#fff 35%,var(--a2) 50%,var(--a1) 80%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;animation:gradePop .7s cubic-bezier(.2,.9,.3,1.25) both,shine 2.4s linear .8s infinite}
+@keyframes shine{from{background-position:120% 0}to{background-position:-130% 0}}
+.runwrap{display:flex;flex-direction:column;gap:4px}
+.runwrap small{color:var(--dim);font-size:12px;text-align:center}
+.runmap{width:100%;height:64px;display:block;border-radius:14px;background:var(--glass);border:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){.grade.pop,.grade.gS,.stats div{animation:none}}
 .stats div{padding:10px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line)}
 .stats small{display:block;color:var(--dim);font-size:13px}
 .stats b{font:700 18px var(--disp);white-space:nowrap}
@@ -207,9 +217,10 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
     <details class="how">
       <summary>Как играть</summary>
       <ul>
-        <li>Веди пальцем или смахивай влево-вправо — корабль меняет полосу. Тап по краю тоже сдвигает, если рядом нет кольца.</li>
-        <li>Огоньки прилетают ровно в бит — собирай подряд, растёт множитель.</li>
-        <li>Золотые кольца — тапни ровно в момент удара: «Идеально», «Хорошо» или «Мимо».</li>
+        <li>Смахни влево-вправо или тапни по краю — корабль срывается сразу и приземляется в новой полосе ровно на удар. Можно и просто вести пальцем.</li>
+        <li>Огоньки стоят на ударах барабанов. Полосу меняешь на ударах — так движения сами ложатся в бит, а на сбивках дорога пробегает по всем полосам.</li>
+        <li>Чем длиннее серия, тем горячее мир: «В ритме», «Горишь», «Неудержим». Ушёл от стены в последний миг — «впритык», бонус.</li>
+        <li>Перед дропом бас уходит и дорога замедляется — влетай в золотую арку, и всё взрывается.</li>
         <li>Длинные ленты — держись на них до конца.</li>
         <li>На дропах — барьеры во всю дорогу: свайп вверх, чтобы перепрыгнуть.</li>
         <li>Шкала «Поток» внизу копится от точной игры. Полная — свайп вверх или тап по ней: 10 секунд очки ×2 и ноты притягиваются.</li>
@@ -318,6 +329,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
     <div class="grade" id="resGrade">A</div>
     <div class="score" id="resScore">0</div>
     <span class="newrec" id="resNew" hidden>Новый рекорд</span>
+    <div class="runwrap"><canvas class="runmap" id="resMap"></canvas><small>твой заезд: бирюзовый — чисто, жёлтый и красный — промахи</small></div>
     <div class="stats" id="resStats"></div>
     <div class="top" id="resTop" hidden></div>
     <button class="btn big" id="againBtn">Ещё раз</button>
@@ -340,6 +352,10 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
     </div>
     <div class="set">
       <div class="lh"><b>Вибрация в такт бочке</b><label class="sw"><input type="checkbox" id="hapChk"><i></i></label></div>
+    </div>
+    <div class="set">
+      <div class="lh"><b>Эффекты на треке</b><label class="sw"><input type="checkbox" id="mufChk"><i></i></label></div>
+      <p class="dim">Перед дропом бас плавно уходит и возвращается ударом на дропе. Врезался в стену — звук на миг глохнет.</p>
     </div>
     <div class="set" id="tiltSet">
       <div class="lh"><b>Управление наклоном</b><label class="sw"><input type="checkbox" id="tiltChk"><i></i></label></div>
@@ -758,6 +774,46 @@ function PotokDSPFactory(root) {
         o.push(Math.round(sus * 100) / 100);
       }
     }
+    // признаки атаки для различения барабанов (рост энергии по группам частот, «шумность», затухание)
+    {
+      const NBb = S.NB, Lg = S.L, fb = S.fb, nF = S.nF;
+      const grp = fb.map((b) => (b.hz < 100 ? 0 : b.hz < 200 ? 1 : b.hz < 500 ? 2 : b.hz < 2000 ? 3 : b.hz < 5000 ? 4 : 5));
+      const lin = (f, b) => Math.exp(Lg[f * NBb + b] * 2.302585) - 1;
+      const gE = (f, gset) => { if (f < 0 || f >= nF) return 0; let e = 0; for (let b = 0; b < NBb; b++) if (gset[grp[b]]) e += lin(f, b); return e; };
+      const LOWG = [1, 1, 0, 0, 0, 0], HIG = [0, 0, 0, 0, 1, 1];
+      for (const o of ons) {
+        const f0 = Math.max(0, Math.min(nF - 1, Math.round((o[0] + BIAS) / hop)));
+        const rise = [0, 0, 0, 0, 0, 0];
+        let nHi = 0, nHiOn = 0, maxHi = 0;
+        const riseB = new Float32Array(NBb);
+        for (let b = 0; b < NBb; b++) {
+          let pre = 0, c = 0; for (let f = f0 - 6; f <= f0 - 3; f++) if (f >= 0) { pre += Lg[f * NBb + b]; c++; }
+          pre = c ? pre / c : 0;
+          let pk = 0; for (let f = f0 - 1; f <= f0 + 3; f++) if (f >= 0 && f < nF && Lg[f * NBb + b] > pk) pk = Lg[f * NBb + b];
+          const d = Math.max(0, pk - pre); riseB[b] = d; rise[grp[b]] += d;
+          if (fb[b].hz >= 1000) { nHi++; if (d > maxHi) maxHi = d; }
+        }
+        for (let b = 0; b < NBb; b++) if (fb[b].hz >= 1000 && riseB[b] > 0.3 * maxHi && riseB[b] > 0.01) nHiOn++;
+        const spread = nHi ? nHiOn / nHi : 0;
+        let pkL = 0; for (let f = f0; f < f0 + 8; f++) pkL = Math.max(pkL, gE(f, LOWG));
+        let pkH = 0; for (let f = f0; f < f0 + 6; f++) pkH = Math.max(pkH, gE(f, HIG));
+        const decL1 = pkL > 1e-6 ? gE(f0 + 24, LOWG) / pkL : 0, decL2 = pkL > 1e-6 ? gE(f0 + 60, LOWG) / pkL : 0;
+        const decH = pkH > 1e-6 ? gE(f0 + 16, HIG) / pkH : 0;
+        const tot = rise.reduce((a, b) => a + b, 0) + 1e-6;
+        o.feat = [...rise.map((x) => x / tot), spread, decL1, decL2, decH, tot];
+      }
+      // класс удара: 0 бочка, 1 малый/клэп, 2 хэт, 3 прочее (мелодия, голос), 4 бочка+малый вместе.
+      // Малый — широкополосный шум выше 1 кГц (растёт сразу много полос), голос и синты — отдельные гармоники.
+      const tots = ons.map((o) => o.feat[10]).sort((a, b) => a - b);
+      const t90 = tots[Math.floor(0.9 * (tots.length - 1))] || 1;
+      for (const o of ons) {
+        const f = o.feat, low = f[0] + f[1], hiS = f[4] + f[5], sp = f[6], tr = f[10] / t90;
+        const K = low >= 0.35 && o[2] >= 0.3, Sn = sp >= 0.7 && hiS >= 0.2 && tr >= 0.5;
+        const cl = K && Sn ? (hiS >= 0.15 ? 4 : 0) : K ? 0 : Sn ? 1 : hiS >= 0.25 || o[4] >= 0.5 ? 2 : 3;
+        o.push(cl);
+        if (!root.__feat) delete o.feat;
+      }
+    }
     prog(0.62, 'beat');
     await tick();
 
@@ -1148,7 +1204,7 @@ function PotokDSPFactory(root) {
     const bpms = Array.from(lbpm).sort((a, b) => a - b);
     prog(1, 'done');
     return {
-      v: 4, duration, step: g * hop,
+      v: 5, duration, step: g * hop,
       bpm: bpms.length ? Math.round(bpms[bpms.length >> 1] * 10) / 10 : 120,
       bpmMin: sections.length ? Math.min(...sections.map((s) => s.bpm)) : 0,
       bpmMax: sections.length ? Math.max(...sections.map((s) => s.bpm)) : 0,
@@ -1170,13 +1226,23 @@ function PotokDSPFactory(root) {
   }
 
   // параметры сложности
+  // tapG — доли, где ноты-удары (тап в момент звука); tapK — какие барабаны; grooveG — доли, где ставим все удары барабанов
   const DIFF = {
-    easy: { per: 0.75, perE: 0.7, cap: 3.2, gap: 0.19, walls: 0, wallGap: [9, 9], dbl: 0, ring: 1, ringGap: 3.5, barrierBars: 0, holdPer16: 0.7, speed: 12.5, win: [0.07, 0.14] },
-    normal: { per: 1.15, perE: 1.05, cap: 4.6, gap: 0.15, walls: 1, wallGap: [0.95, 0.55], dbl: 0.3, ring: 2, ringGap: 1.4, barrierBars: 8, holdPer16: 0.6, speed: 14.5, win: [0.05, 0.11] },
-    hard: { per: 1.45, perE: 1.35, cap: 6, gap: 0.12, walls: 2, wallGap: [0.8, 0.42], dbl: 0.55, ring: 3, ringGap: 0.45, barrierBars: 4, holdPer16: 0.55, speed: 16, win: [0.045, 0.095] },
-    expert: { per: 1.75, perE: 1.6, cap: 7.5, gap: 0.1, walls: 3, wallGap: [0.6, 0.36], dbl: 0.75, ring: 4, ringGap: 0.3, barrierBars: 2, holdPer16: 0.5, speed: 17.5, win: [0.035, 0.075] },
+    easy: { per: 0.75, perE: 0.7, cap: 3.2, gap: 0.19, walls: 0, wallGap: [9, 9], dbl: 0, ring: 0, ringGap: 9, barrierBars: 0, holdPer16: 0.7, speed: 12.5, win: [0.07, 0.14], tapG: null, tapK: 0, tapGap: 9, grooveG: ['down', 'beat'] },
+    normal: { per: 1.15, perE: 1.05, cap: 4.6, gap: 0.15, walls: 1, wallGap: [0.95, 0.55], dbl: 0.3, ring: 0, ringGap: 9, barrierBars: 8, holdPer16: 0.6, speed: 14.5, win: [0.06, 0.12], tapG: null, tapK: 0, tapGap: 9, grooveG: ['down', 'beat', '8'] },
+    hard: { per: 1.45, perE: 1.35, cap: 6, gap: 0.12, walls: 2, wallGap: [0.8, 0.42], dbl: 0.55, ring: 0, ringGap: 9, barrierBars: 4, holdPer16: 0.55, speed: 16, win: [0.05, 0.1], tapG: null, tapK: 0, tapGap: 9, grooveG: ['down', 'beat', '8', '3'] },
+    expert: { per: 1.75, perE: 1.6, cap: 7.5, gap: 0.1, walls: 3, wallGap: [0.6, 0.36], dbl: 0.75, ring: 0, ringGap: 9, barrierBars: 2, holdPer16: 0.5, speed: 17.5, win: [0.04, 0.085], tapG: null, tapK: 0, tapGap: 9, grooveG: ['down', 'beat', '8', '16', '3'] },
   };
   const normMode = (m) => (m === 'vibe' ? 'easy' : m === 'challenge' ? 'normal' : DIFF[m] ? m : 'normal');
+
+  // тип удара по атаке: новый анализ хранит класс (o[7]), старый — только доли полос
+  function drumOf(o) {
+    const cl = o[7];
+    if (cl != null) return { kick: cl === 0 || cl === 4, snare: cl === 1 || cl === 4, hat: cl === 2 };
+    const [, s, lo, mi, hi] = o, sum = lo + mi + hi + 1e-6;
+    const kick = lo >= 0.35, snare = !kick && mi >= 0.45 && s >= 0.25;
+    return { kick, snare, hat: !kick && !snare && (hi >= 0.5 || (lo < 0.25 && hi / sum >= 0.18)) };
+  }
 
   function generateLevel(an, modeIn, seedStr, opts) {
     const mode = normMode(modeIn), P = DIFF[mode], easy = mode === 'easy';
@@ -1213,6 +1279,29 @@ function PotokDSPFactory(root) {
     }
     const nearBarrier = (t, w) => barriers.some((b) => Math.abs(b.t - t) < w);
 
+    // 2б. золотые кольца — тапы точно в бит
+    const rings = [];
+    {
+      let last = -10;
+      for (let i = 0; i < nb; i++) {
+        const t = beats[i];
+        if (t < 3 || t > dur - 1) continue;
+        const sec = sections[secAt(t)];
+        if (!isPlay(sec.type)) continue;
+        const pos = an.beatPos[i], down = pos === 0;
+        const kickB = (an.beatKick[i] || 0) >= 0.4, snB = (an.beatSnare && an.beatSnare[i] || 0) >= 0.4;
+        if (!P.ring) break;
+        let ok;
+        if (P.ring === 1) ok = down && sec.type !== 'build';
+        else if (P.ring === 2) ok = down;
+        else if (P.ring === 3) ok = down || (snB && sec.type !== 'build');
+        else ok = down || kickB || snB;
+        if (!ok || t - last < P.ringGap || nearBarrier(t, 0.45)) continue;
+        rings.push({ t, down });
+        last = t;
+      }
+    }
+
     // 3. кандидаты в ноты: вес по месту в такте
     const cands = [];
     for (const o of an.onsets) {
@@ -1233,7 +1322,7 @@ function PotokDSPFactory(root) {
         }
       }
       const sum = lo + mi + hi + 1e-6;
-      const kick = lo >= 0.35, snare = !kick && mi >= 0.45 && s >= 0.25, hat = !kick && !snare && (hi >= 0.5 || (lo < 0.25 && hi / sum >= 0.18));
+      const { kick, snare, hat } = drumOf(o);
       const tonal = hi / sum < 0.32;
       cands.push({ t, s, w, grid, kick, snare, hat, br, sec: k, sus: tonal ? sus : 0, score: 0.5 * s + 0.42 * w + (kick ? 0.14 : 0) + (snare ? 0.12 : 0) });
     }
@@ -1272,8 +1361,17 @@ function PotokDSPFactory(root) {
     const inHold = (t) => holds.some((h) => t > h.t - minGap && t < h.end + minGap);
     const chosen = holds.map((h) => Object.assign({}, h.c, { hold: h.end }));
     for (const h of holds) insert(h.t);
+    // 5а. грув: каждый удар бочки и малого на сетке — нота (чтобы рисунок повторял барабаны, а не «самые громкие звуки»)
+    const grooveG = new Set(P.grooveG);
+    const nearRing = (t, w) => { let lo = 0, hi = rings.length; while (lo < hi) { const m = (lo + hi) >> 1; if (rings[m].t < t - w) lo = m + 1; else hi = m; } return lo < rings.length && rings[lo].t <= t + w; };
+    for (const c of cands) {
+      if (!(c.kick || c.snare) || !grooveG.has(c.grid) || c.s < 0.1) continue;
+      if (!free(c.t) || inHold(c.t)) continue;
+      c.groove = 1; insert(c.t); chosen.push(c);
+    }
+    // 5б. остальное по бюджету части: хэты, мелодия, акценты
     sections.forEach((sec, k) => {
-      const list = cands.filter((c) => c.sec === k).sort((a, b) => b.score - a.score);
+      const list = cands.filter((c) => c.sec === k && !c.groove).sort((a, b) => b.score - a.score);
       const nBeats = Math.max(1, sec.b1 - sec.b0);
       const e = clamp(sec.energy, 0, 1.2);
       let per = P.per + P.perE * (e - 0.5);
@@ -1292,45 +1390,101 @@ function PotokDSPFactory(root) {
     chosen.sort((a, b) => a.t - b.t);
 
     // 6. полосы: узоры по тактам; одинаковые части — одинаковый рисунок
-    const MOTIFS = ['contour', 'zigzag', 'stairs', 'hold', 'mirror'];
     const bs = chosen.map((c) => c.br).sort((a, b) => a - b);
     const rank = (b) => { let lo = 0, hi = bs.length; while (lo < hi) { const m = (lo + hi) >> 1; if (bs[m] < b) lo = m + 1; else hi = m; } return bs.length > 1 ? lo / (bs.length - 1) : 0.5; };
-    const downIdx = []; for (let i = 0; i < nb; i++) if (an.beatPos[i] === 0) downIdx.push(i);
-    const barOf = (bi) => { let lo = 0, hi = downIdx.length - 1, r = 0; while (lo <= hi) { const m = (lo + hi) >> 1; if (downIdx[m] <= bi) { r = m; lo = m + 1; } else hi = m - 1; } return r; };
-    const notes = [];
-    let lane = 1, prevT = -10, prevU = 0.5, holdLane = 0;
-    for (const c of chosen) {
+    // смены полосы: корабль переходит на другую полосу на ударах. Приоритет — малый барабан, потом бочка на доле,
+    // потом прочие сильные звуки. Частота зависит от энергии части (дроп — чаще, брейк — реже), в разгоне ускоряется.
+    // Долго ехать прямо нельзя: после паузы смена ставится на ближайшую ноту. Сбивки (густые удары) — пробег по полосам.
+    const BASE_GAP = { easy: 0.8, normal: 0.46, hard: 0.34, expert: 0.27 }[mode];
+    const MAX_STRAIGHT = { easy: 3.0, normal: 2.2, hard: 1.8, expert: 1.4 }[mode];
+    const gapAt = (sec, t) => {
+      const e = clamp(sec.energy, 0, 1.2);
+      let f = sec.type === 'drop' ? 0.75 : sec.type === 'break' ? 1.8 : sec.type === 'intro' || sec.type === 'outro' ? 1.3 : 1;
+      if (sec.type === 'build') f = 1.25 - 0.6 * clamp((t - sec.t0) / Math.max(1, sec.t1 - sec.t0), 0, 1);
+      return BASE_GAP * f * (1.2 - 0.4 * e);
+    };
+    const prioOf = (c) => {
+      if (c.hold) return 0;
+      if (c.snare) return 3;
+      const onB = c.grid === 'down' || c.grid === 'beat';
+      if (c.kick && onB) return 2;
+      if (c.groove || (c.s >= 0.45 && (onB || c.grid === '8'))) return 1;
+      return 0;
+    };
+    // перед малым оставляем 0.15 с свободными — иначе перейти не успеть (убираем мелкие ноты-подходы)
+    for (let i = chosen.length - 2; i >= 0; i--) {
+      const c = chosen[i], nx = chosen[i + 1];
+      if (!c.groove && !c.hold && nx.snare && !nx.hold && nx.t - c.t < 0.15) chosen.splice(i, 1);
+    }
+    // сбивки: удары барабанов заметно гуще обычного для части
+    const gIdx = chosen.map((c, i) => (c.groove && !c.hold ? i : -1)).filter((i) => i >= 0);
+    const ioiMed = sections.map((sec, k) => {
+      const d = []; let pt = null;
+      for (const i of gIdx) { const c = chosen[i]; if (c.sec !== k) continue; if (pt != null) d.push(c.t - pt); pt = c.t; }
+      d.sort((x, y) => x - y); return d.length ? d[d.length >> 1] : 1;
+    });
+    const fill = new Uint8Array(chosen.length);
+    for (let q = 1; q + 1 < gIdx.length; q++) {
+      const c = chosen[gIdx[q]], a1 = c.t - chosen[gIdx[q - 1]].t, a2 = chosen[gIdx[q + 1]].t - c.t, m = ioiMed[c.sec];
+      if (a1 >= 0.14 && a2 >= 0.14 && a1 <= 0.27 && a2 <= 0.27 && a1 <= 0.65 * m && a2 <= 0.65 * m && sections[c.sec].energy >= 0.35) fill[gIdx[q]] = 1;
+    }
+    const secGroove = sections.map(() => 0);
+    for (const i of gIdx) secGroove[chosen[i].sec]++;
+    const SEQS = easy ? [[0, 1, 2, 1], [2, 1, 0, 1], [1, 0, 1, 2], [1, 2, 1, 0]] : [[0, 1, 2, 1], [2, 1, 0, 1], [1, 0, 1, 2], [1, 2, 1, 0], [0, 2, 1], [0, 1, 2, 1, 0, 2]];
+    const notes = [], chgF = [];
+    let lane = 1, prevT = -10, lastChg = -10, seqI = 0, curSec = -1, sweep = 1, sweepN = 0, chgU = 0.5, firstInSec = true, afterHold = false;
+    for (let ci = 0; ci < chosen.length; ci++) {
+      const c = chosen[ci];
       const sec = sections[c.sec];
-      const bi = Math.max(0, beatIdx(c.t));
-      const bar = barOf(bi), barInSec = bar - barOf(Math.max(0, sec.b0));
-      const beatInBar = bi - (downIdx[bar] != null ? downIdx[bar] : 0);
       const lr = mulberry32(seedFrom(String(seedStr) + '|' + sec.label));
-      const mA = MOTIFS[Math.floor(lr() * MOTIFS.length)], mB = MOTIFS[Math.floor(lr() * MOTIFS.length)];
-      const motif = Math.floor(barInSec / 2) % 2 === 0 ? mA : mB;
+      const seq = SEQS[Math.floor(lr() * SEQS.length)];
+      if (c.sec !== curSec) { curSec = c.sec; seqI = 0; firstInSec = true; }
+      let dt = c.t - prevT;
+      const since = c.t - lastChg, gap = gapAt(sec, c.t), pr = prioOf(c);
       const u = rank(c.br);
-      const onBeat = c.grid === 'down' || c.grid === 'beat';
-      let target;
-      if (motif === 'zigzag') target = onBeat ? (beatInBar % 2 === 0 ? 0 : 2) : 1;
-      else if (motif === 'stairs') target = [0, 1, 2, 1][((beatInBar % 4) + 4) % 4];
-      else if (motif === 'hold') { if (c.grid === 'down' || c.t - prevT > 0.9) holdLane = (holdLane + 1 + (lr() < 0.5 ? 1 : 0)) % 3; target = holdLane; }
-      else {
-        const du = u - prevU;
-        target = Math.abs(du) > 0.22 ? lane + (du > 0 ? 1 : -1) : (onBeat && rnd() < 0.35 ? lane + (rnd() < 0.5 ? -1 : 1) : lane);
-        if (motif === 'mirror' && bar % 2 === 1) target = 2 - clamp(target, 0, 2);
+      let target = lane;
+      // густой поток (дробь по 16-м): чтобы не ехать прямо, убираем одну ноту перед сменой
+      if (dt < 0.14 && !c.hold && notes.length >= 2 && !chgF[notes.length - 1] && !notes[notes.length - 1].end) {
+        const want = (pr >= 3 && since >= 1.3 * gap) || (pr >= 2 && since >= 2 * gap) || since >= Math.min(3.6 * gap, MAX_STRAIGHT);
+        const pp = notes[notes.length - 2], ppEnd = pp.end || pp.t;
+        if (want && c.t - ppEnd >= 0.14) { notes.pop(); chgF.pop(); prevT = ppEnd; dt = c.t - prevT; }
       }
-      target = clamp(target, 0, 2);
-      const dt = c.t - prevT;
-      const maxMove = dt >= 0.32 ? 2 : dt >= 0.14 ? 1 : 0;
-      lane = clamp(lane + clamp(target - lane, -maxMove, maxMove), 0, 2);
+      let changed = false;
+      if (dt >= 0.14) {
+        let go = false, how = 'seq';
+        if (c.hold) go = since >= gap; // на ленту — с переходом
+        else if (afterHold) go = true; // сошёл с ленты — сразу в другую полосу
+        else if (fill[ci] && sweepN < 6) { go = true; how = 'sweep'; }
+        else if (pr >= 3 && since >= gap) go = true;
+        else if (pr >= 2 && since >= 1.7 * gap) go = true;
+        else if (pr >= 1 && since >= 2.6 * gap) go = true;
+        else if (since >= Math.min(3.6 * gap, MAX_STRAIGHT)) go = true;
+        if (go) {
+          if (how === 'sweep') {
+            if (!fill[ci - 1] || sweepN === 0) sweep = lane === 0 ? 1 : lane === 2 ? -1 : (lr() < 0.5 ? 1 : -1);
+            if (lane + sweep < 0 || lane + sweep > 2) sweep = -sweep;
+            target = lane + sweep; sweepN++;
+          } else {
+            sweepN = 0;
+            if (firstInSec && sec.type === 'drop' && dt >= 0.32 && !easy) target = lane === 1 ? (lr() < 0.5 ? 0 : 2) : 2 - lane;
+            else if (secGroove[c.sec] < 4 && Math.abs(u - chgU) > 0.12) target = clamp(lane + (u > chgU ? 1 : -1), 0, 2);
+            else for (let k = 0; k < seq.length; k++) { const l = seq[(seqI + k) % seq.length]; if (l !== lane) { target = l; seqI = (seqI + k + 1) % seq.length; break; } }
+            if (target === lane) target = lane === 0 ? 1 : lane === 2 ? 1 : (lr() < 0.5 ? 0 : 2);
+            if (Math.abs(target - lane) === 2 && (dt < 0.32 || easy)) target = lane + Math.sign(target - lane);
+          }
+          firstInSec = false; lastChg = c.t; chgU = u; changed = target !== lane;
+        } else if (!fill[ci]) sweepN = 0;
+      }
+      lane = clamp(target, 0, 2);
       if (c.hold) {
-        notes.push({ t: c.t, end: c.hold, lane, kind: 'hold', s: c.s, pts: 20, grid: c.grid });
-        prevT = c.hold;
+        notes.push({ t: c.t, end: c.hold, lane, kind: 'hold', s: c.s, pts: 20, grid: c.grid }); chgF.push(changed ? 1 : 0);
+        prevT = c.hold; lastChg = c.hold; afterHold = true;
       } else {
-        const kind = (c.kick && (c.grid === 'down' || c.grid === 'beat')) ? 'bass' : c.snare ? 'big' : c.kick ? 'bass' : 'small';
-        notes.push({ t: c.t, lane, kind, s: c.s, pts: kind === 'big' ? 25 : kind === 'bass' ? 20 : 10, grid: c.grid });
+        afterHold = false;
+        const kind = c.snare ? 'big' : c.kick ? 'bass' : 'small';
+        notes.push({ t: c.t, lane, kind, s: c.s, pts: kind === 'big' ? 25 : kind === 'bass' ? 20 : 10, grid: c.grid }); chgF.push(changed ? 1 : 0);
         prevT = c.t;
       }
-      prevU = u;
     }
 
     // 7. стены на ударах бочки
@@ -1362,30 +1516,16 @@ function PotokDSPFactory(root) {
       }
     }
 
-    // 8. золотые кольца — тапы точно в бит
-    const rings = [];
-    {
-      let last = -10;
-      for (let i = 0; i < nb; i++) {
-        const t = beats[i];
-        if (t < 3 || t > dur - 1) continue;
-        const sec = sections[secAt(t)];
-        if (!isPlay(sec.type)) continue;
-        const pos = an.beatPos[i], down = pos === 0;
-        const kickB = (an.beatKick[i] || 0) >= 0.4, snB = (an.beatSnare && an.beatSnare[i] || 0) >= 0.4;
-        let ok;
-        if (P.ring === 1) ok = down && sec.type !== 'build';
-        else if (P.ring === 2) ok = down;
-        else if (P.ring === 3) ok = down || (snB && sec.type !== 'build');
-        else ok = down || kickB || snB;
-        if (!ok || t - last < P.ringGap || nearBarrier(t, 0.45)) continue;
-        rings.push({ t, down });
-        last = t;
-      }
-    }
-
     // 9. пульс и линии долей
     const pulses = beats.map((t, i) => [t, r3(clamp(0.3 + 0.7 * (an.beatKick[i] || 0), 0, 1)), an.beatPos[i] === 0 ? 1 : 0]);
+    // удары барабанов для «живого» мира: [время, 0 бочка / 1 малый / 2 хэт, сила]
+    const hits = [];
+    for (const o of an.onsets) {
+      const [t, sv] = o;
+      if (sv < 0.08) continue;
+      const { kick, snare, hat } = drumOf(o);
+      if (kick || snare || (hat && sv >= 0.1)) hits.push([r3(t), snare ? 1 : kick ? 0 : 2, r3(clamp(sv, 0, 1))]);
+    }
 
     // 10. замедление перед дропом
     const preDrops = [];
@@ -1415,7 +1555,7 @@ function PotokDSPFactory(root) {
 
     const totalPts = notes.reduce((a, n) => a + n.pts, 0);
     const lv = {
-      mode, notes, obstacles, rings, barriers, pulses, preDrops, win: P.win, fail: !easy,
+      mode, notes, obstacles, rings, barriers, pulses, hits, preDrops, win: P.win, fail: !easy,
       totalPts, duration: dur, drops, bpm: an.bpm, phase: an.phase,
       sections: sections.map((s) => ({ t0: s.t0, t1: s.t1, type: s.type, bpm: s.bpm, label: s.label })), tempoChanges: an.tempoChanges || [],
       _speedAt: speedAt, _contourAt: contourAt, _intensityAt: intensityAt,
@@ -1462,7 +1602,7 @@ function PotokDSPFactory(root) {
     const T = off;
     const segAt = (t) => { for (let i = segs.length - 1; i >= 0; i--) if (t >= segs[i].offset) return segs[i]; return segs[0]; };
     const local = (t) => { const s = segAt(t); return [s, clamp(t - s.offset + s.lead, s.lead, s.end)]; };
-    const M = { mode, notes: [], obstacles: [], rings: [], barriers: [], pulses: [], preDrops: [], sections: [], tempoChanges: [], drops: [], trackStarts: [], totalPts: 0, duration: T, win: DIFF[mode].win, fail: mode !== 'easy' };
+    const M = { mode, notes: [], obstacles: [], rings: [], barriers: [], pulses: [], hits: [], preDrops: [], sections: [], tempoChanges: [], drops: [], trackStarts: [], totalPts: 0, duration: T, win: DIFF[mode].win, fail: mode !== 'easy' };
     const beatPos = [], beatMeter = [], boundaryTempo = [];
     segs.forEach((s, k) => {
       const sh = s.offset - s.lead, inR = (t) => t >= s.lead && t < s.end - 0.25;
@@ -1470,6 +1610,7 @@ function PotokDSPFactory(root) {
       for (const o of s.lv.obstacles) if (inR(o.t)) M.obstacles.push({ t: o.t + sh, lanes: o.lanes });
       for (const r of s.lv.rings) if (inR(r.t)) M.rings.push({ t: r.t + sh, down: r.down });
       for (const b of s.lv.barriers) if (inR(b.t)) M.barriers.push({ t: b.t + sh });
+      for (const h of s.lv.hits) if (inR(h[0])) M.hits.push([h[0] + sh, h[1], h[2]]);
       s.lv.pulses.forEach((p, i) => { if (inR(p[0])) { M.pulses.push([p[0] + sh, p[1], p[2]]); beatPos.push(s.an.beatPos[i]); beatMeter.push(s.an.beatMeter[i]); } });
       for (const [a, b] of s.lv.preDrops) if (inR(b)) M.preDrops.push([Math.max(a, s.lead) + sh, b + sh]);
       for (const d of s.lv.drops) if (inR(d)) M.drops.push(d + sh);
@@ -1499,7 +1640,7 @@ function PotokDSPFactory(root) {
     Object.assign(M, buildPath(T, step, (t) => { const [s, x] = local(t); return s.lv._speedAt(x); }, (t) => sampleCurve(contour, step, t), (t) => sampleCurve(intensitySlow, step, t)));
     const bpms = segs.map((s) => s.lv.bpm).filter(Boolean);
     const an = {
-      v: 4, duration: T, step, intensity, intensitySlow, contour, beatPos, beatMeter,
+      v: 5, duration: T, step, intensity, intensitySlow, contour, beatPos, beatMeter,
       bpm: bpms.length ? bpms.slice().sort((a, b) => a - b)[bpms.length >> 1] : 120,
       bpmMin: Math.min(...segs.flatMap((s) => (s.an.sections || []).map((x) => x.bpm).filter(Boolean))),
       bpmMax: Math.max(...segs.flatMap((s) => (s.an.sections || []).map((x) => x.bpm).filter(Boolean))),
@@ -1745,11 +1886,13 @@ else PotokDSPFactory(self);
   const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   const MODE_NAME = { easy: 'Лёгкий', normal: 'Норм', hard: 'Хард', expert: 'Эксперт' };
   const MODE_HINT = {
-    easy: 'Без стен и проигрыша — чистый вайб. Огоньки, кольца и ленты, кайфуй под трек.',
-    normal: 'Стены на ударах бочки, барьеры на дропах, энергия. Кольца на сильных долях.',
-    hard: 'Плотнее ноты, стены на каждой бочке, двойные стены и барьеры чаще. Кольца и на снейрах.',
-    expert: 'Максимум нот и колец, узкое окно «Идеально», барьер каждые два такта дропа.',
+    easy: 'Без стен и проигрыша — чистый вайб. Огоньки на каждом ударе барабанов, ленты, кайфуй под трек.',
+    normal: 'Огоньки на бочке и малом, стены на ударах бочки, барьеры на дропах, энергия.',
+    hard: 'Плюс восьмые доли. Стены на каждой бочке, двойные стены, барьеры чаще.',
+    expert: 'Все барабаны вплоть до шестнадцатых, максимум стен и барьер каждые два такта дропа.',
   };
+
+
   const isIOS = (tg && tg.platform === 'ios') || /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   // ---------- хранилище ----------
@@ -1802,7 +1945,7 @@ else PotokDSPFactory(self);
   };
 
   // ---------- настройки ----------
-  const DEF = { offset: null, haptics: true, tilt: false, sens: 1, quality: 'auto', volume: 0.9, mode: 'normal' };
+  const DEF = { offset: null, haptics: true, tilt: false, sens: 1, quality: 'auto', volume: 0.9, mode: 'normal', muffle: true, tapHintN: 0 };
   const settings = Object.assign({}, DEF, ls.get('settings') || {});
   function saveSettings() { ls.set('settings', settings); cloud.set('settings', settings); }
   cloud.get(['settings']).then((v) => {
@@ -1832,7 +1975,11 @@ else PotokDSPFactory(self);
       try { A.ctx = new AC({ latencyHint: 'interactive' }); } catch (e) { A.ctx = new AC(); }
       A.gain = A.ctx.createGain(); A.gain.gain.value = settings.volume;
       A.an = A.ctx.createAnalyser(); A.an.fftSize = 512; A.an.smoothingTimeConstant = 0.72;
-      A.gain.connect(A.an); A.an.connect(A.ctx.destination);
+      // фильтр: при промахе трек на миг «глохнет» — слышно, что музыку держишь ты
+      A.lp = A.ctx.createBiquadFilter(); A.lp.type = 'lowpass'; A.lp.frequency.value = 20000; A.lp.Q.value = 0.9;
+      // и срез баса перед дропом: бас уходит, на дропе возвращается разом
+      A.hp = A.ctx.createBiquadFilter(); A.hp.type = 'highpass'; A.hp.frequency.value = 10; A.hp.Q.value = 0.8;
+      A.gain.connect(A.hp); A.hp.connect(A.lp); A.lp.connect(A.an); A.an.connect(A.ctx.destination);
       A.freq = new Uint8Array(A.an.frequencyBinCount);
       if (settings.offset == null) {
         const lat = (A.ctx.outputLatency || 0) + (A.ctx.baseLatency || 0) || 0.03;
@@ -1865,6 +2012,34 @@ else PotokDSPFactory(self);
     const when = now + lead;
     s.start(when);
     A.src = s; A.startAt = when; clock.init = false;
+  }
+  function muffle(k) {
+    if (!A.lp || !settings.muffle) return;
+    try {
+      const f = A.lp.frequency, now = A.ctx.currentTime;
+      f.cancelScheduledValues(now); f.setValueAtTime(Math.max(200, f.value), now);
+      f.exponentialRampToValueAtTime(k > 0.7 ? 420 : 900, now + 0.03);
+      f.exponentialRampToValueAtTime(20000, now + 0.03 + 0.45 + 0.3 * k);
+    } catch (e) { /* */ }
+  }
+  function unmuffle() {
+    if (!A.lp) return;
+    try { const f = A.lp.frequency; f.cancelScheduledValues(0); f.setValueAtTime(20000, A.ctx.currentTime); } catch (e) { /* */ }
+    try { const f = A.hp.frequency; f.cancelScheduledValues(0); f.setValueAtTime(10, A.ctx.currentTime); } catch (e) { /* */ }
+  }
+  // перед каждым дропом бас плавно уходит (как у диджея), на самом дропе — возвращается ударом
+  function scheduleDropFx() {
+    if (!A.hp || !game || game.check || settings.muffle === false) return;
+    const f = A.hp.frequency, now = A.ctx.currentTime;
+    try {
+      for (const [a, b] of game.lv.preDrops) {
+        const ta = Math.max(now + 0.02, A.startAt + a), tb = A.startAt + b;
+        if (tb - ta < 0.4) continue;
+        f.setValueAtTime(10, ta);
+        f.exponentialRampToValueAtTime(380, tb - 0.012);
+        f.setValueAtTime(10, tb);
+      }
+    } catch (e) { /* */ }
   }
   const clock = { init: false, t: 0, perf: 0 };
   function songTime(now) {
@@ -1903,8 +2078,8 @@ else PotokDSPFactory(self);
   // ---------- состояние ----------
   settings.mode = DSP.normMode(settings.mode);
   const state = { screen: 'home', track: null, mode: settings.mode, lastResult: null, prev: 'home', pending: null };
-  const world = { t: 0, D: 0, th: 0, thT: 0, beat: 0, kick: 0, flash: 0, flashHue: 0, shake: 0, bend: 0, bendT: 0, roll: 0, intensity: 0.35, dropT: 0, scene: 'city', scenePrev: 'city', sceneK: 1, zoom: 0, zoomT: 0, pre: 0, ringFx: 0 };
-  const player = { x: 0, tx: 0, vx: 0, tilt: 0, hitT: 0, jumpT0: null, h: 0 };
+  const world = { t: 0, D: 0, th: 0, thT: 0, beat: 0, kick: 0, flash: 0, flashHue: 0, shake: 0, bend: 0, bendT: 0, roll: 0, intensity: 0.35, dropT: 0, scene: 'city', scenePrev: 'city', sceneK: 1, zoom: 0, zoomT: 0, pre: 0, ringFx: 0, thump: 0, snareFx: 0, hatFx: 0, tapFx: 0, tapLane: 1, heatV: 0, heatT: 0, shock: 0, spd: 1 };
+  const player = { x: 0, tx: 0, vx: 0, tilt: 0, hitT: 0, jumpT0: null, h: 0, mv: null, ghosts: [], glow: 0, glowHue: 0, laneNow: 1, leftAt: [-9, -9, -9] };
   // палитры: небо, акцент (сетка/корабль), края дороги, солнце (верх/низ), ноты
   const THEMES = [
     { sky: 278, acc: 186, edge: 318, sun1: 48, sun2: 328, small: 186, big: 48, bass: 318 },
@@ -1993,6 +2168,18 @@ else PotokDSPFactory(self);
     sprites.set(key, c);
     return c;
   }
+  // вертикальный луч (снизу ярко, вверх гаснет) — для колонн света
+  function beamSprite(hue) {
+    const b = bucket(hue), key = 'beam' + b;
+    let c = sprites.get(key);
+    if (c) return c;
+    c = document.createElement('canvas'); c.width = 8; c.height = 64;
+    const x = c.getContext('2d'), gr = x.createLinearGradient(0, 64, 0, 0);
+    gr.addColorStop(0, hsl(b, 100, 75, 0.7)); gr.addColorStop(1, hsl(b, 100, 60, 0));
+    x.fillStyle = gr; x.fillRect(0, 0, 8, 64);
+    sprites.set(key, c);
+    return c;
+  }
   function sunSprite(h1, h2, R) {
     const b1 = bucket(h1), b2 = bucket(h2), key = 'sun' + b1 + '_' + b2;
     let c = sprites.get(key);
@@ -2071,6 +2258,14 @@ else PotokDSPFactory(self);
     world.sceneK = Math.min(1, world.sceneK + dt / 1.2);
     world.zoom += (world.zoomT - world.zoom) * Math.min(1, dt * (world.zoomT < world.zoom ? 14 : 3));
     world.ringFx = Math.max(0, world.ringFx - dt * 3);
+    world.thump = Math.max(0, world.thump - dt * 7);
+    world.snareFx = Math.max(0, world.snareFx - dt * 5);
+    world.hatFx = Math.max(0, world.hatFx - dt * 9);
+    world.tapFx = Math.max(0, world.tapFx - dt * 4);
+    world.shock = Math.max(0, world.shock - dt * 1.6);
+    world.heatV += (world.heatT - world.heatV) * Math.min(1, dt * (world.heatT < world.heatV ? 3 : 1.5));
+    player.glow = Math.max(0, player.glow - dt * 5);
+    for (let i = player.ghosts.length - 1; i >= 0; i--) { player.ghosts[i].life += dt; if (player.ghosts[i].life > 0.2) player.ghosts.splice(i, 1); }
     player.hitT = Math.max(0, player.hitT - dt);
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i]; p.life += dt;
@@ -2092,12 +2287,59 @@ else PotokDSPFactory(self);
 
   function updatePlayer(dt) {
     if (state.screen === 'play' && settings.tilt && tiltVal != null) player.tx = clamp(tiltVal / 20 * 2, -2.3, 2.3);
-    const k = 1 - Math.exp(-dt * 17);
-    const nx = player.x + (player.tx - player.x) * k;
-    player.vx = (nx - player.x) / dt; player.x = nx;
-    player.tilt += (clamp(player.vx * 0.05, -0.5, 0.5) - player.tilt) * Math.min(1, dt * 12);
+    const m = player.mv;
+    if (m && state.screen === 'play' && game) {
+      // перелёт в такт: разгон и приземление ровно на удар
+      const tau = (world.t - m.t0) / Math.max(0.02, m.t1 - m.t0);
+      if (tau >= 1) { player.vx = (m.x1 - player.x) / dt; player.x = m.x1; player.mv = null; landFx(m); }
+      else { const q = Math.max(0, tau), e = 0.15 * (1 - (1 - q) * (1 - q)) + 0.85 * q * q * q; const nx = m.x0 + (m.x1 - m.x0) * e; player.vx = (nx - player.x) / dt; player.x = nx; }
+    } else {
+      if (m) player.mv = null;
+      const k = 1 - Math.exp(-dt * 17);
+      const nx = player.x + (player.tx - player.x) * k;
+      player.vx = (nx - player.x) / dt; player.x = nx;
+    }
+    const lean = player.mv ? Math.sign(player.mv.x1 - player.mv.x0) * 0.22 : 0;
+    player.tilt += (clamp(player.vx * 0.05 + lean, -0.5, 0.5) - player.tilt) * Math.min(1, dt * 12);
+    // шлейф на рывке
+    if (Math.abs(player.vx) > 9 && state.screen === 'play' && player.ghosts.length < (effQ() === 'low' ? 3 : 10)) player.ghosts.push({ x: player.x, h: player.h || 0, tilt: player.tilt, life: 0 });
+    const ln = Math.round(nearestLane(player.x) / 2) + 1;
+    if (ln !== player.laneNow) { player.leftAt[player.laneNow] = world.t; player.laneNow = ln; }
     const curv = curveLv ? (DSP.curveAt(curveLv, world.D + 16) - 2 * DSP.curveAt(curveLv, world.D + 8) + DSP.curveAt(curveLv, world.D)) * 0.012 : world.bend * 3;
     world.roll += (clamp(-player.vx * 0.006 - curv, -0.07, 0.07) - world.roll) * Math.min(1, dt * 5);
+  }
+
+  // смена полосы игроком: корабль срывается сразу, а приземляется ровно на ближайший удар
+  // (ноту в новой полосе или бочку/малый), если он в пределах 0.3 с и по дороге нет стен
+  function steerTo(tx) {
+    tx = clamp(tx, -2, 2);
+    player.tx = tx; player.mv = null;
+    if (!(state.screen === 'play' && game && !game.finished && !game.check && clock.init) || settings.tilt) return;
+    if (Math.abs(tx - player.x) < 0.4) return;
+    const G = game, lv = G.lv, t = world.t, L = Math.round(tx / 2) + 1;
+    let T = null, land = 0;
+    for (let i = G.ni; i < lv.notes.length && lv.notes[i].t < t + 0.3; i++) {
+      const n = lv.notes[i];
+      if (n.lane !== L || n.t <= t - 0.02) continue;
+      if (n.t <= t + 0.05) return; // нота уже вот-вот — летим сразу, иначе опоздаем
+      T = n.t; land = n.kind === 'big' ? 2 : 1; break;
+    }
+    if (T == null) for (let i = G.hti; i < lv.hits.length && lv.hits[i][0] < t + 0.22; i++) {
+      const h = lv.hits[i];
+      if (h[1] <= 1 && h[0] > t + 0.06) { T = h[0]; land = h[1] === 1 ? 2 : 1; break; }
+    }
+    if (T == null) return;
+    for (let i = G.oi; i < lv.obstacles.length && lv.obstacles[i].t <= T + 0.03; i++) if (lv.obstacles[i].t > t - 0.05) return;
+    player.mv = { x0: player.x, x1: tx, t0: t, t1: T, land };
+  }
+  function landFx(m) {
+    if (!m.land) return;
+    world.tapFx = m.land === 2 ? 1 : 0.7; world.tapLane = Math.round(m.x1 / 2) + 1;
+    world.thump = Math.max(world.thump, m.land === 2 ? 0.75 : 0.5);
+    const [sx, sy] = shipPos(), d = Math.sign(m.x1 - m.x0);
+    burst(sx - d * LANE * 0.25, sy, m.land === 2 ? P.big : P.acc, effQ() === 'low' ? 4 : 9, 230);
+    fxRings.push({ x: sx, y: pY(0), hue: m.land === 2 ? P.big : P.acc, life: 0, max: 0.3, r0: LANE * 0.2, r1: LANE * 0.75 });
+    haptic('note');
   }
 
   // ---------- игра ----------
@@ -2110,6 +2352,14 @@ else PotokDSPFactory(self);
     lv.pd = Float64Array.from(lv.pulses, (p) => d(p[0]));
     lv.rd = Float64Array.from(lv.rings || [], (r) => d(r.t));
     lv.bd = Float64Array.from(lv.barriers || [], (b) => d(b.t));
+    lv.hits = lv.hits || [];
+    lv.hd = Float64Array.from(lv.hits, (h) => d(h[0]));
+    lv.nTaps = lv.notes.reduce((a, n) => a + (n.tap ? 1 : 0), 0);
+    // арки на границах частей трека (через них влетаешь в новый мир) и финишная арка
+    lv.gates = [];
+    (lv.sections || []).forEach((sc, i) => { if (i > 0 && sc.t0 > 2) lv.gates.push({ t: sc.t0, type: sc.type, track: sc.track != null }); });
+    lv.gates.push({ t: lv.duration, type: 'finish' });
+    lv.gd = Float64Array.from(lv.gates, (q) => d(q.t));
     return lv;
   }
   function levelFor(tr, modeIn) {
@@ -2146,7 +2396,9 @@ else PotokDSPFactory(self);
       fever: 0, feverOn: 0, feverReady: false,
       finished: false, resumeAt: 0, seedPh: rnd() * 6.28, lead: 2.2,
       check, si: 0, tci: 0, ci: 0, lastBeatT: -10, lastDown: false, bi: -1, tsi: 0, setNext: 0, setDecoding: false,
+      tj: new Uint8Array(nN), inL: new Uint8Array(nN), pend: [], hti: 0, tapMiss: 0, tapHit: 0, pStreak: 0, tapHint: false, heat: 0, lastNear: -9, shown: 0,
     };
+    unmuffle();
     game.barNo = new Int32Array(lv.pulses.length);
     { let b = 0; lv.pulses.forEach((p, i) => { if (p[2]) b++; game.barNo[i] = Math.max(1, b); }); }
     const want = Math.floor(rnd() * THEMES.length);
@@ -2154,13 +2406,15 @@ else PotokDSPFactory(self);
     world.thT = Math.round(world.th) + ((want - cur + THEMES.length) % THEMES.length || THEMES.length);
     setScene(SCENE_OF[(lv.sections[0] || {}).type] || 'city', true);
     world.zoom = world.zoomT = 0; world.pre = 0; world.fever = 0;
-    player.x = player.tx = 0; player.jumpT0 = null; player.h = 0;
+    player.x = player.tx = 0; player.jumpT0 = null; player.h = 0; player.mv = null; player.ghosts.length = 0; player.laneNow = 1; player.leftAt = [-9, -9, -9];
+    world.heatT = world.heatV = 0; world.shock = 0;
     parts.length = popups.length = fxRings.length = 0;
     hudCache = {};
     $('#hudEnergyWrap').style.display = lv.fail ? '' : 'none';
     $('#hud').classList.toggle('check', check);
     $('#hudInfo').textContent = check ? 'Слушай щелчки: высокий — сильная доля' : '';
     if (tr.set) playSetFrom(game.lead); else playFrom(game.lead);
+    scheduleDropFx();
     show('play');
   }
 
@@ -2205,7 +2459,9 @@ else PotokDSPFactory(self);
     if (A.ctx.state !== 'running') return;
     const t = songTime(now);
     world.t = t;
+    const D0 = world.D;
     world.D = DSP.distAt(lv, t);
+    if (dt > 0.001 && world.D >= D0) world.spd += (clamp((world.D - D0) / dt / (lv.speed0 || 14), 0.3, 3) - world.spd) * Math.min(1, dt * 3);
     world.intensity = DSP.sampleCurve(G.an.intensity, G.an.step, Math.max(0, t));
     updatePlayer(dt);
     // прыжок
@@ -2215,7 +2471,8 @@ else PotokDSPFactory(self);
     if (!G.check) {
       while (G.ni < lv.notes.length && lv.notes[G.ni].t <= t) {
         const n = lv.notes[G.ni];
-        if (Math.abs(px - laneX(n.lane)) < (n.end ? Math.max(1.2, catchR - 0.4) : catchR)) collect(n, G.ni); else miss(n, G.ni);
+        if (n.tap) { G.inL[G.ni] = Math.abs(px - laneX(n.lane)) < catchR ? 1 : 0; if (!G.ns[G.ni]) G.pend.push(G.ni); }
+        else if (Math.abs(px - laneX(n.lane)) < (n.end ? Math.max(1.2, catchR - 0.4) : catchR)) collect(n, G.ni); else miss(n, G.ni);
         if (n.end) G.holds.push(G.ni);
         G.ni++;
       }
@@ -2233,7 +2490,18 @@ else PotokDSPFactory(self);
       while (G.oi < lv.obstacles.length && lv.obstacles[G.oi].t <= t) {
         const o = lv.obstacles[G.oi];
         if (o.lanes.some((l) => Math.abs(px - laneX(l)) < 0.95)) hitWall(G.oi);
-        else { G.os[G.oi] = 2; addScore(5, true); }
+        else {
+          G.os[G.oi] = 2; addScore(5, true);
+          // ушёл из полосы стены в последний момент — «впритык»
+          const late = o.lanes.some((l) => t - player.leftAt[l] < 0.28);
+          if (late && t - (G.lastNear || -9) > 0.8) {
+            G.lastNear = t; addScore(40); bumpCombo();
+            const [sx, sy] = shipPos();
+            popup('впритык!', clamp(sx, 110, W - 110), sy - LANE * 0.9, P.acc, false);
+            burst(pX(0, laneX(o.lanes[0])), pY(0, 0.6), 350, 10, 260);
+            haptic('note');
+          }
+        }
         G.oi++;
       }
       while (G.bix < lv.barriers.length && lv.barriers[G.bix].t <= t) {
@@ -2241,7 +2509,30 @@ else PotokDSPFactory(self);
         G.bix++;
       }
       while (G.ri < lv.rings.length && lv.rings[G.ri].t < t - lv.win[1]) { if (!G.rs[G.ri]) ringMiss(G.ri); G.ri++; }
+      // ноты-удары ждут тапа до конца окна
+      for (let k = G.pend.length - 1; k >= 0; k--) {
+        const i = G.pend[k];
+        if (G.ns[i]) { G.pend.splice(k, 1); continue; }
+        if (t > lv.notes[i].t + lv.win[1]) { G.pend.splice(k, 1); tapExpire(i); }
+      }
+      // подсказка перед первыми ударами
+      if (!G.tapHint && lv.nTaps && settings.tapHintN < 3) {
+        let i = G.ni; while (i < lv.notes.length && !lv.notes[i].tap) i++;
+        if (i < lv.notes.length && lv.notes[i].t - t < 1.8) {
+          G.tapHint = true; settings.tapHintN++; saveSettings();
+          popup('Тапай ровно в удар!', CX, HY + H * 0.2, P.big, true);
+        }
+      }
       if (G.feverOn > 0) { G.feverOn -= dt; if (G.feverOn <= 0) feverEnd(); }
+    }
+    // удары барабанов: мир откликается на каждый
+    while (G.hti < lv.hits.length && lv.hits[G.hti][0] <= t) {
+      const [, ty, hs] = lv.hits[G.hti++];
+      if (ty === 0) { world.kick = Math.max(world.kick, 0.45 + 0.55 * hs); world.thump = Math.max(world.thump, 0.3 + 0.7 * hs); }
+      else if (ty === 1) {
+        world.snareFx = Math.max(world.snareFx, 0.5 + 0.5 * hs);
+        if (effQ() !== 'low') for (const X of [-3.3, 3.3]) burst(pX(1.5, X), pY(1.5, 0.2), P.big, 2, 150);
+      } else world.hatFx = Math.max(world.hatFx, 0.4 + 0.6 * hs);
     }
     // доли: вибро, пульс мира, подсказки
     while (G.pi < lv.pulses.length && lv.pulses[G.pi][0] <= t) {
@@ -2276,20 +2567,36 @@ else PotokDSPFactory(self);
     world.thT += dt * 0.003 * world.intensity;
     if (!G.check && lv.fail && G.energy <= 0) { finish(true); return; }
     if (t > lv.duration + 0.7) { finish(false); return; }
+    G.shown += (G.score - G.shown) * Math.min(1, dt * 9); if (G.score - G.shown < 1) G.shown = G.score;
     updateHud(t);
   }
   function shipPos() { return [pX(0, player.x), pY(0, 0.5 + (player.h || 0))]; }
   const feverMul = () => (game && game.feverOn > 0 ? 2 : 1);
   function addScore(base, noMult) { game.score += base * (noMult ? 1 : game.mult) * feverMul(); }
+  // «накал»: длинная серия разогревает мир, на каждой ступени — короткая вспышка и надпись
+  const HEAT = [[10, 'Разогрев'], [25, 'В ритме'], [50, 'Горишь'], [100, 'Неудержим'], [200, 'Легенда']];
+  function heatTier(c) { let k = 0; for (let i = 0; i < HEAT.length; i++) if (c >= HEAT[i][0]) k = i + 1; return k; }
   function bumpCombo() {
     const G = game;
     G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
+    const tier = heatTier(G.combo);
+    if (tier !== G.heat) {
+      G.heat = tier; world.heatT = tier / HEAT.length;
+      if (tier >= 1 && !G.check) {
+        // надпись — только когда ступень взята впервые за заезд
+        if (tier >= 2 && tier > (G.maxHeat || 0)) popup(HEAT[tier - 1][1] + ' · ' + G.combo, CX, HY + H * 0.2, tier >= 3 ? P.big : P.acc, true);
+        G.maxHeat = Math.max(G.maxHeat || 0, tier);
+        world.flash = Math.max(world.flash, 0.25 + 0.1 * tier); world.flashHue = tier >= 3 ? P.big : P.acc;
+        world.shock = Math.max(world.shock, 0.55); haptic(tier >= 3 ? 'kickStrong' : 'note');
+      }
+    }
     const m = G.easy ? Math.min(4, 1 + Math.floor(G.combo / 16)) : Math.min(8, 1 + Math.floor(G.combo / 10));
     if (m > G.mult) { const el = $('#hudMult'); el.classList.add('bump'); setTimeout(() => el.classList.remove('bump'), 160); }
     G.mult = m;
   }
   function breakCombo(msg) {
     const G = game;
+    G.heat = 0; world.heatT = 0;
     if (G.easy) { G.combo = 0; G.mult = 1; return; }
     if (msg && G.combo >= 15) popup('комбо сброшено', CX, PY - LANE * 1.2, 0, false);
     G.combo = 0; G.mult = 1;
@@ -2304,8 +2611,9 @@ else PotokDSPFactory(self);
     const [sx, sy] = shipPos();
     const hue = noteHue(n.kind);
     burst(sx, sy - 10, hue, n.kind === 'small' ? 6 : 14, n.kind === 'small' ? 160 : 260);
+    player.glow = Math.max(player.glow, n.kind === 'small' ? 0.5 : 1); player.glowHue = hue;
     fxRings.push({ x: sx, y: sy, hue, life: 0, max: 0.35, r0: LANE * 0.2, r1: LANE * (n.kind === 'small' ? 0.55 : 0.9) });
-    if (n.kind !== 'small' && n.kind !== 'hold') { popup('+' + pts, sx + (Math.random() - 0.5) * 30, sy - LANE * 0.55, hue, false); haptic('note'); }
+    if (n.kind !== 'small' && n.kind !== 'hold') haptic('note');
   }
   function miss(n, i) {
     const G = game;
@@ -2326,7 +2634,7 @@ else PotokDSPFactory(self);
   }
   function hitWall(i) {
     const G = game;
-    G.os[i] = 1; G.hits++; G.energy -= 24; breakCombo(false);
+    G.os[i] = 1; G.hits++; G.energy -= 24; breakCombo(false); muffle(1);
     world.shake = 1; world.flash = 0.9; world.flashHue = 350; player.hitT = 0.5;
     const [sx, sy] = shipPos();
     burst(sx, sy, 350, 22, 320);
@@ -2342,20 +2650,47 @@ else PotokDSPFactory(self);
   }
   function hitBarrier(i) {
     const G = game;
-    G.bs[i] = 1; G.hits++; G.energy -= 20; breakCombo(false);
+    G.bs[i] = 1; G.hits++; G.energy -= 20; breakCombo(false); muffle(1);
     world.shake = 1; world.flash = 0.8; world.flashHue = 350; player.hitT = 0.5;
     const [sx, sy] = shipPos();
     burst(sx, sy, 350, 18, 300);
     popup('прыгай!', sx, sy - LANE * 0.6, 350, true);
     haptic('hit');
   }
-  // тап в бит: возвращает true, если тап ушёл кольцу
-  function tapBeat(ts) {
+  // тап в бит: нота-удар в своей полосе (или в соседней по стороне тапа — тогда корабль туда перепрыгивает), иначе кольцо.
+  // Возвращает true, если тап «ушёл в удар» и не должен двигать корабль.
+  function tapBeat(ts, dir, onlyDir) {
     if (state.screen !== 'play' || !game || game.check || game.finished || game.resumeAt || !clock.init) return false;
-    const G = game, lv = G.lv, win = lv.win;
+    const G = game, lv = G.lv, win = lv.win, notes = lv.notes;
     const nowP = performance.now();
     const tsOk = ts && ts <= nowP + 5 && nowP - ts < 250 ? ts : nowP; // у некоторых движков timeStamp в другой шкале
     const t = clock.t + (tsOk - clock.perf) / 1000;
+    if (lv.nTaps) {
+      const cur = Math.round(nearestLane(player.tx) / 2) + 1;
+      let lo = 0, hi = notes.length;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (notes[m].t < t - 0.4) lo = m + 1; else hi = m; }
+      let best = -1, bd = 1e9;
+      for (let i = lo; i < notes.length && notes[i].t < t + 0.4; i++) {
+        const n = notes[i];
+        if (!n.tap || G.ns[i]) continue;
+        if (onlyDir ? n.lane !== cur + dir : n.lane !== cur && !(dir && n.lane === cur + dir)) continue;
+        const d = Math.abs(n.t - t) + (n.lane === cur ? 0 : 0.002);
+        if (d < bd) { bd = d; best = i; }
+      }
+      if (best >= 0) {
+        const n = notes[best], err = t - n.t;
+        if (Math.abs(err) <= win[1]) {
+          if (n.lane !== cur) player.tx = laneX(n.lane);
+          tapHit(best, err, Math.abs(err) <= win[0]);
+          return true;
+        }
+        if (n.lane === cur && Math.abs(err) < win[1] + 0.13) {
+          popup(err < 0 ? 'рано' : 'поздно', pX(0, laneX(n.lane)), PY - LANE * 1.15, 0, false, true);
+          return true;
+        }
+      }
+    }
+    if (onlyDir) return false;
     let best = -1, bd = 1e9;
     for (let i = Math.max(0, G.ri - 1); i < lv.rings.length && lv.rings[i].t < t + win[1] + 0.02; i++) {
       if (G.rs[i]) continue;
@@ -2366,23 +2701,58 @@ else PotokDSPFactory(self);
     const err = t - lv.rings[best].t, perfect = bd <= win[0];
     G.rs[best] = perfect ? 1 : 2;
     bumpCombo();
-    const [sx, sy] = shipPos();
+    const [, sy] = shipPos();
     if (perfect) {
-      G.perfect++; addScore(50); addFever(5);
-      popup('Идеально', CX, PY - LANE * 1.5, P.big, true, true);
+      G.perfect++; G.pStreak++; addScore(50); addFever(5);
+      popup(judgeTxt(), CX, PY - LANE * 1.5, P.big, true, true);
       burst(CX, sy - 20, P.big, 20, 330); haptic('note');
     } else {
-      G.good++; addScore(25); addFever(2.5);
+      G.good++; G.pStreak = 0; addScore(25); addFever(2.5);
       popup('Хорошо · ' + (err < 0 ? 'рано' : 'поздно'), CX, PY - LANE * 1.5, P.acc, true, true);
     }
     fxRings.push({ x: CX, y: sy, hue: P.big, life: 0, max: 0.45, r0: LANE * 0.5, r1: LANE * 2.2 });
-    world.ringFx = 1;
+    world.ringFx = 1; world.thump = 1;
     return true;
+  }
+  const judgeTxt = () => (game.pStreak >= 4 ? 'Идеально ×' + game.pStreak : 'Идеально');
+  function tapHit(i, err, perfect) {
+    const G = game, lv = G.lv, n = lv.notes[i];
+    G.ns[i] = 1; G.tj[i] = perfect ? 1 : 2; G.got++; G.tapHit++;
+    G.gotPts += n.pts * (perfect ? 1 : 0.75);
+    bumpCombo();
+    G.score += Math.round(n.pts * (perfect ? 1.5 : 1)) * G.mult * feverMul();
+    G.energy = Math.min(100, G.energy + 2);
+    const z = Math.max(0, lv.nd[i] - world.D), x = pX(z, laneX(n.lane)), y = pY(z, 0.35);
+    const hue = noteHue(n.kind);
+    if (perfect) { G.perfect++; G.pStreak++; addFever(3.2); } else { G.good++; G.pStreak = 0; addFever(1.6); }
+    burst(x, y, hue, perfect ? 18 : 9, perfect ? 330 : 220);
+    fxRings.push({ x, y: pY(z), hue, life: 0, max: 0.42, r0: LANE * 0.25, r1: LANE * (perfect ? 1.35 : 0.9) });
+    if (perfect) fxRings.push({ x, y: pY(z), hue: P.big, life: 0, max: 0.3, r0: LANE * 0.1, r1: LANE * 0.7 });
+    world.thump = Math.max(world.thump, perfect ? 1 : 0.6);
+    world.tapFx = 1; world.tapLane = n.lane;
+    popup(perfect ? judgeTxt() : 'Хорошо · ' + (err < 0 ? 'рано' : 'поздно'), clamp(x, 120, W - 120), PY - LANE * 1.15, perfect ? P.big : P.acc, perfect && G.pStreak >= 8, true);
+    haptic(n.drum ? 'kickStrong' : 'kick');
+  }
+  function tapExpire(i) {
+    const G = game, n = G.lv.notes[i];
+    if (G.inL[i] && G.mode === 'normal') {
+      // на Норме проехал без тапа — нота засчитана наполовину, комбо живёт
+      G.ns[i] = 1; G.tj[i] = 3; G.got++; G.gotPts += n.pts * 0.5; bumpCombo();
+      G.score += Math.round(n.pts * 0.5) * G.mult * feverMul();
+      const [sx, sy] = shipPos();
+      burst(sx, sy - 10, noteHue(n.kind), 4, 140);
+      return;
+    }
+    G.ns[i] = 2; G.miss++; G.tapMiss++; G.pStreak = 0;
+    breakCombo(true);
+    if (G.lv.fail) G.energy -= 3;
+    muffle(0.6);
+    popup(G.inL[i] ? 'Мимо · тапни!' : 'Мимо', pX(0, laneX(n.lane)), PY - LANE * 1.15, 0, false, true);
   }
   function ringMiss(i) {
     const G = game;
     G.rs[i] = 3; G.ringMiss++;
-    breakCombo(false);
+    breakCombo(false); muffle(0.5); G.pStreak = 0;
     if (G.lv.fail) G.energy -= 3;
     popup('Мимо', CX, PY - LANE * 1.5, 0, false, true);
   }
@@ -2422,7 +2792,7 @@ else PotokDSPFactory(self);
     world.thT = Math.round(world.thT) + 1;
     world.flash = 1; world.flashHue = P.edge;
     world.shake = Math.max(world.shake, 0.55);
-    world.dropT = 1;
+    world.dropT = 1; world.shock = 1;
     haptic('drop');
     streaks.length = 0;
     for (let i = 0; i < 40; i++) streaks.push({ a: Math.random() * Math.PI * 2, d: Math.random(), s: 0.6 + Math.random() * 0.8 });
@@ -2447,7 +2817,7 @@ else PotokDSPFactory(self);
     show('pause');
   }
   function quitToTrack() {
-    stopSrc();
+    stopSrc(); unmuffle();
     stopClicks();
     try { A.ctx.resume(); } catch (e) { /* */ }
     game = null;
@@ -2470,12 +2840,14 @@ else PotokDSPFactory(self);
       return;
     }
     try { A.gain.gain.setTargetAtTime(0, A.ctx.currentTime, failed ? 0.08 : 0.25); } catch (e) { /* */ }
+    unmuffle();
     const endedSrc = A.src;
     setTimeout(() => { if (A.src === endedSrc) stopSrc(); }, 1200);
     const lv = G.lv;
     const noteAcc = lv.totalPts ? G.gotPts / lv.totalPts : 0;
-    const ringAcc = lv.rings.length ? (G.perfect + 0.5 * G.good) / lv.rings.length : null;
-    const acc = ringAcc == null ? noteAcc : 0.75 * noteAcc + 0.25 * ringAcc;
+    const beatsN = lv.rings.length + (lv.nTaps || 0);
+    const ringAcc = beatsN ? (G.perfect + 0.6 * G.good) / beatsN : null;
+    const acc = ringAcc == null ? noteAcc : lv.nTaps ? 0.6 * noteAcc + 0.4 * ringAcc : 0.75 * noteAcc + 0.25 * ringAcc;
     let grade;
     if (failed) grade = '—';
     else if (acc >= 0.95 && G.hits === 0) grade = 'S';
@@ -2486,9 +2858,9 @@ else PotokDSPFactory(self);
     const tr = state.track;
     const res = {
       score: G.score, acc, grade, failed, mode: G.mode, maxCombo: G.maxCombo, got: G.got, total: lv.notes.length,
-      hits: G.hits, walls: lv.obstacles.length + lv.barriers.length, perfect: G.perfect, good: G.good, rings: lv.rings.length,
+      hits: G.hits, walls: lv.obstacles.length + lv.barriers.length, perfect: G.perfect, good: G.good, rings: lv.rings.length, taps: lv.nTaps || 0, tapHit: G.tapHit,
       jumps: G.jumps, barriers: lv.barriers.length, holds: G.holdsDone, holdsTotal: lv.notes.filter((n) => n.end).length,
-      dur: Math.max(0, world.t), full: lv.duration, set: !!G.set,
+      dur: Math.max(0, world.t), full: lv.duration, set: !!G.set, strip: runStrip(G),
     };
     state.lastResult = res;
     if (!G.set) {
@@ -2500,6 +2872,46 @@ else PotokDSPFactory(self);
     if (failed) { world.flash = 1; world.flashHue = 350; haptic('hit'); } else haptic('win');
     setTimeout(() => showResults(res), failed ? 900 : 700);
     if (!G.set) submitScore(res);
+  }
+
+  // карта заезда для итогов: громкость трека по кускам, цвет — сколько нот собрано, красные точки — столкновения
+  function runStrip(G) {
+    const lv = G.lv, N = 56, dur = Math.max(1, lv.duration), an = G.an;
+    const tot = new Array(N).fill(0), got = new Array(N).fill(0), bad = new Array(N).fill(0), h = new Array(N).fill(0);
+    const bk = (t) => clamp(Math.floor(t / dur * N), 0, N - 1);
+    lv.notes.forEach((n, i) => { const b = bk(n.t); tot[b]++; if (G.ns[i] === 1) got[b]++; });
+    lv.obstacles.forEach((o, i) => { if (G.os[i] === 1) bad[bk(o.t)] = 1; });
+    lv.barriers.forEach((o, i) => { if (G.bs[i] === 1) bad[bk(o.t)] = 1; });
+    const I = an.intensity || [], st = an.step || 0.05;
+    for (let b = 0; b < N; b++) {
+      const a0 = Math.floor(b * dur / N / st), a1 = Math.min(I.length, Math.floor((b + 1) * dur / N / st));
+      let m = 0; for (let j = a0; j < a1; j++) m = Math.max(m, I[j]); h[b] = m;
+    }
+    return { tot, got, bad, h, played: clamp(world.t / dur, 0, 1) };
+  }
+  function drawRunMap(strip) {
+    const c = $('#resMap');
+    if (!c || !strip) return;
+    const r = c.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    c.width = Math.max(1, Math.round(r.width * dpr)); c.height = Math.max(1, Math.round(r.height * dpr));
+    const x = c.getContext('2d'), w = r.width, hh = r.height, N = strip.h.length, bw = w / N;
+    const t0 = performance.now();
+    const step = () => {
+      const k = Math.min(1, (performance.now() - t0) / 900);
+      x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, hh);
+      for (let b = 0; b < N; b++) {
+        const appear = clamp(k * N * 1.25 - b * 0.9, 0, 1);
+        if (appear <= 0) continue;
+        const reached = (b + 0.5) / N <= strip.played + 1e-6;
+        const ratio = strip.tot[b] ? strip.got[b] / strip.tot[b] : 1;
+        const bh = (6 + strip.h[b] * (hh - 16)) * (0.3 + 0.7 * appear);
+        x.fillStyle = !reached ? 'rgba(255,255,255,.12)' : hsl(lerpH(350, P.acc, Math.pow(ratio, 1.6)), 100, 45 + 25 * ratio, 0.95);
+        x.fillRect(b * bw + 1, hh - 4 - bh, Math.max(1, bw - 2), bh);
+        if (strip.bad[b] && reached) { x.fillStyle = '#ff4d76'; x.beginPath(); x.arc(b * bw + bw / 2, hh - 10 - bh, 3, 0, Math.PI * 2); x.fill(); }
+      }
+      if (k < 1 && state.screen === 'results') requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   // ---------- HUD ----------
@@ -2522,7 +2934,7 @@ else PotokDSPFactory(self);
       return;
     }
     const fev = G.feverOn > 0;
-    setHud('s', G.score, (v) => { hudEls.score.textContent = fmtNum(v); });
+    setHud('s', Math.round(G.shown), (v) => { hudEls.score.textContent = fmtNum(v); });
     setHud('m', G.mult * (fev ? 2 : 1) + (fev ? 'f' : ''), () => { hudEls.mult.textContent = '×' + G.mult * (fev ? 2 : 1); hudEls.mult.classList.toggle('fev', fev); });
     setHud('c', G.combo, (v) => { hudEls.combo.textContent = v >= 5 ? 'комбо ' + v : ''; });
     if (G.lv.fail) {
@@ -2546,7 +2958,7 @@ else PotokDSPFactory(self);
     const dt = Math.min(0.05, Math.max(0, time - lastRenderT)); lastRenderT = time;
     g.setTransform(DPR, 0, 0, DPR, 0, 0);
     // камера: приближение (перед дропом) — фокус растёт, корабль остаётся на месте
-    F = F0 * (1 + world.zoom); CAMH = (PY - HY) * Z0 / F; ZNEAR = F * CAMH / (H - HY + 1) - Z0 - 0.4;
+    F = F0 * (1 + world.zoom + 0.032 * world.thump * world.thump); CAMH = (PY - HY) * Z0 / F; ZNEAR = F * CAMH / (H - HY + 1) - Z0 - 0.4;
     curveLv = game && (state.screen === 'play' || state.screen === 'pause') && game.lv.curve ? game.lv : null;
     curve0 = curveLv ? DSP.curveAt(curveLv, world.D) : 0;
     const hue = P.sky;
@@ -2760,7 +3172,7 @@ else PotokDSPFactory(self);
     const step = 3, off = ((world.D % step) + step) % step;
     const s0 = sc(0);
     const inGame = game && (state.screen === 'play' || state.screen === 'pause');
-    const gridA = inGame ? 0.1 : 0.22 + 0.55 * world.beat + 0.3 * world.kick;
+    const gridA = inGame ? 0.07 + 0.32 * world.kick * world.kick + 0.12 * world.hatFx : 0.22 + 0.55 * world.beat + 0.3 * world.kick;
     for (let z = ZNEAR - off + step; z < ZMAX; z += step) {
       if (z < ZNEAR) continue;
       const k = Math.pow(1 - z / ZMAX, 1.4);
@@ -2783,10 +3195,40 @@ else PotokDSPFactory(self);
     for (const X of [-3.3, 3.3]) {
       g.beginPath();
       for (let i = 0; i < ZS.length; i++) { const z = ZS[i]; i ? g.lineTo(pX(z, X), pY(z)) : g.moveTo(pX(z, X), pY(z)); }
-      const eh = fev ? P.edge + (lastRenderT * 240) % 360 : P.edge;
-      g.strokeStyle = hsl(eh, 100, 62, 0.22 + 0.2 * world.beat + (fev ? 0.25 : 0)); g.lineWidth = fev ? 16 : 10; g.stroke();
-      g.strokeStyle = hsl(eh, 100, 72, 1); g.lineWidth = fev ? 3.5 : 2.5; g.stroke();
+      const hv = inGame ? world.heatV : 0, pre = world.pre;
+      const eh = fev ? P.edge + (lastRenderT * 240) % 360 : lerpH(P.edge, P.big, 0.55 * hv);
+      g.strokeStyle = hsl(eh, 100, 62, 0.2 + 0.15 * world.beat + 0.3 * world.kick + 0.25 * hv + 0.35 * pre + (fev ? 0.25 : 0)); g.lineWidth = (fev ? 16 : 10) + 10 * world.kick + 12 * hv + 10 * pre; g.stroke();
+      g.strokeStyle = hsl(eh, 100, 72 + 18 * world.kick, 1); g.lineWidth = (fev ? 3.5 : 2.5) + 2 * world.kick + 1.5 * hv; g.stroke();
     }
+    if (inGame) drawBeatLights();
+  }
+  // свет на ударах: малый барабан — колонны света по краям, тап в удар — вспышка своей полосы
+  function drawBeatLights() {
+    g.globalCompositeOperation = 'lighter';
+    const sn = world.snareFx;
+    if (sn > 0.02) {
+      const spr = beamSprite(P.big);
+      for (const X of [-3.3, 3.3]) {
+        for (const z of [1.5, 6, 11, 17]) {
+          const k = sn * (1 - z / 22), x = pX(z, X), yb = pY(z), yt = pY(z, 2.6 + 0.8 * sn);
+          const w = Math.max(2, 0.35 * sc(z));
+          g.globalAlpha = Math.min(1, 0.8 * k);
+          g.drawImage(spr, x - w / 2, yt, w, yb - yt);
+        }
+      }
+      g.globalAlpha = 1;
+    }
+    if (world.tapFx > 0.02) {
+      const X = laneX(world.tapLane), k = world.tapFx;
+      const gr = g.createLinearGradient(0, pY(14), 0, H);
+      gr.addColorStop(0, hsl(P.big, 100, 65, 0)); gr.addColorStop(1, hsl(P.big, 100, 70, 0.35 * k));
+      g.fillStyle = gr;
+      g.beginPath();
+      g.moveTo(pX(ZNEAR, X - 1), pY(ZNEAR)); g.lineTo(pX(6, X - 1), pY(6)); g.lineTo(pX(14, X - 0.8), pY(14));
+      g.lineTo(pX(14, X + 0.8), pY(14)); g.lineTo(pX(6, X + 1), pY(6)); g.lineTo(pX(ZNEAR, X + 1), pY(ZNEAR));
+      g.closePath(); g.fill();
+    }
+    g.globalCompositeOperation = 'source-over';
   }
 
   const drawList = [];
@@ -2808,8 +3250,15 @@ else PotokDSPFactory(self);
       for (let i = 0; i < lv.obstacles.length; i++) { const z = lv.od[i] - D; if (z < ZNEAR - 1) continue; if (z > ZMAX) break; drawList.push({ z, k: 1, i }); }
       for (let i = 0; i < lv.rings.length; i++) { const z = lv.rd[i] - D; if (z < ZNEAR - 1) continue; if (z > ZMAX) break; drawList.push({ z, k: 3, i }); }
       for (let i = 0; i < lv.barriers.length; i++) { const z = lv.bd[i] - D; if (z < ZNEAR - 1) continue; if (z > ZMAX) break; drawList.push({ z, k: 5, i }); }
+      for (let i = 0; i < lv.gates.length; i++) { const z = lv.gd[i] - D; if (z < ZNEAR - 1) continue; if (z > ZMAX) break; drawList.push({ z, k: 7, i }); }
     }
-    for (let i = Math.max(0, G.pi - 4); i < lv.pulses.length; i++) { const z = lv.pd[i] - D; if (z < ZNEAR) continue; if (z > ZMAX) break; drawList.push({ z, k: 2, i }); }
+    const score = lv.hits.length > 0 && !G.check;
+    for (let i = Math.max(0, G.pi - 4); i < lv.pulses.length; i++) { const z = lv.pd[i] - D; if (z < ZNEAR) continue; if (z > ZMAX) break; if (score && !lv.pulses[i][2]) continue; drawList.push({ z, k: 2, i }); }
+    // партитура барабанов на дороге: бочка — полоса во всю ширину, малый — столбики у краёв, хэт — искры на разметке
+    if (score) {
+      let lo = Math.max(0, G.hti - 6);
+      for (let i = lo; i < lv.hits.length; i++) { const z = lv.hd[i] - D; if (z < ZNEAR) continue; if (z > ZMAX * 0.8) break; drawList.push({ z, k: 6, i }); }
+    }
     drawList.sort((a, b) => b.z - a.z);
     // линия мелодии — связывает ноты
     if (!G.check) {
@@ -2831,13 +3280,18 @@ else PotokDSPFactory(self);
     for (const o of drawList) {
       const z = o.z, s = sc(z);
       let fade = z > ZMAX - 10 ? (ZMAX - z) / 10 : 1;
+      if (o.k === 6) { drawHit(o.i, z, fade, s / s0); continue; }
+      if (o.k === 7) { drawGate(o.i, z, fade, s / s0); continue; }
+      if (o.k === 0 && lv.notes[o.i].tap) { drawTap(o.i, z, fade, s / s0); continue; }
       if (o.k === 0) {
         const n = lv.notes[o.i];
         if (z < 0) fade *= Math.max(0, 1 + z / 1.6);
         if (fade <= 0.01) continue;
         const kindS = n.kind === 'small' ? 1.0 : n.kind === 'big' ? 1.3 : 1.45;
         const size = s * kindS * (1.25 + 0.18 * world.beat) * (0.85 + 0.3 * n.s);
-        const x = pX(z, laneX(n.lane)), y = pY(z, 0.55 + 0.08 * Math.sin(world.t * 4 + o.i));
+        let X = laneX(n.lane);
+        if (z < 1.3 && Math.abs(X - player.x) < 1.2) X += (player.x - X) * 0.7 * (1 - Math.max(0, z) / 1.3);
+        const x = pX(z, X), y = pY(z, 0.55 + 0.08 * Math.sin(world.t * 4 + o.i));
         g.globalCompositeOperation = 'lighter';
         g.globalAlpha = fade * (G.ns[o.i] === 2 ? 0.35 : 1);
         g.drawImage(glow(noteHue(n.kind), n.kind), x - size / 2, y - size / 2, size, size);
@@ -2865,6 +3319,98 @@ else PotokDSPFactory(self);
         g.globalCompositeOperation = 'source-over';
       }
     }
+  }
+  // арка-портал: дроп — большая и золотая, разгон и брейк — потише, финиш — белая
+  function drawGate(i, z, fade, k) {
+    const q = game.lv.gates[i];
+    if (z < 0) fade *= Math.max(0, 1 + z / 1.5);
+    if (fade <= 0.01) return;
+    const drop = q.type === 'drop', fin = q.type === 'finish';
+    const hue = fin ? P.acc : drop ? P.big : q.type === 'build' ? P.edge : q.type === 'break' ? P.acc : P.edge;
+    const Wd = drop ? 4.1 : 3.8, Hh = drop ? 3.6 : 3.0;
+    const pts = [];
+    for (let a = 0; a <= 16; a++) {
+      const th = Math.PI * a / 16, X = -Math.cos(th) * Wd, h = Math.sin(th) * Hh * (a === 0 || a === 16 ? 0 : 1) + (a === 0 || a === 16 ? 0 : 0.4);
+      pts.push([pX(z, X), pY(z, h)]);
+    }
+    const near = clamp(1 - z / 12, 0, 1);
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = fade;
+    g.lineJoin = 'round';
+    for (const [lw, a, l] of [[(drop ? 26 : 16) * k, 0.18 + 0.12 * near, 62], [(drop ? 9 : 6) * k, 0.45, 72], [Math.max(1.5, (drop ? 3.5 : 2.5) * k), 1, 88]]) {
+      g.strokeStyle = fin ? 'rgba(255,255,255,' + a + ')' : hsl(hue, 100, l, a);
+      g.lineWidth = Math.max(1, lw);
+      g.beginPath(); pts.forEach((p, j) => (j ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.stroke();
+    }
+    // у дропа и финиша — лучи от арки
+    if ((drop || fin) && z > 0) {
+      const cx = pX(z, 0), cy = pY(z, Hh * 0.55), R = Wd * sc(z);
+      g.strokeStyle = fin ? 'rgba(255,255,255,.35)' : hsl(hue, 100, 80, 0.35);
+      g.lineWidth = Math.max(1, 2 * k);
+      g.beginPath();
+      for (let r = 0; r < 12; r++) { const a = -Math.PI * (r + 0.5) / 12, c = Math.cos(a), s2 = Math.sin(a); g.moveTo(cx + c * R * 1.1, cy + s2 * R * 0.9); g.lineTo(cx + c * R * (1.35 + 0.15 * (r % 2)), cy + s2 * R * (1.1 + 0.15 * (r % 2))); }
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+  }
+  function drawHit(i, z, fade, k) {
+    const h = game.lv.hits[i], ty = h[1], hs = h[2];
+    let a = fade * (z < 0 ? Math.max(0, 1 + z / 1.2) : 1) * (0.35 + 0.65 * hs);
+    if (a <= 0.01) return;
+    const near = z < 1.2 && z > -0.8 ? 1.8 : 1;
+    g.globalCompositeOperation = 'lighter';
+    if (ty === 0) {
+      const y = pY(z, 0.01);
+      g.strokeStyle = hsl(P.bass, 100, 62, 0.22 * a * near); g.lineWidth = Math.max(2, 22 * k);
+      g.beginPath(); g.moveTo(pX(z, -3.2), y); g.lineTo(pX(z, 3.2), y); g.stroke();
+      g.strokeStyle = hsl(P.bass, 100, 80, 0.55 * a * near); g.lineWidth = Math.max(1, 2.5 * k);
+      g.beginPath(); g.moveTo(pX(z, -3.2), y); g.lineTo(pX(z, 3.2), y); g.stroke();
+    } else if (ty === 1) {
+      g.strokeStyle = hsl(P.big, 100, 78, 0.85 * a * near); g.lineWidth = Math.max(2, 7 * k);
+      g.beginPath();
+      for (const X of [-3.3, 3.3]) { const x = pX(z, X); g.moveTo(x, pY(z)); g.lineTo(x, pY(z, 0.9)); }
+      g.stroke();
+    } else {
+      const sz = Math.max(3, 0.5 * sc(z)) * (0.6 + 0.4 * hs);
+      g.globalAlpha = Math.min(1, 0.7 * a * near);
+      for (const X of [-1, 1]) g.drawImage(glow(P.small, 'small'), pX(z, X) - sz / 2, pY(z, 0.04) - sz / 2, sz, sz);
+      g.globalAlpha = 1;
+    }
+    g.globalCompositeOperation = 'source-over';
+  }
+  // нота-удар: «пэд» на дороге, к нему сжимается кольцо — тап в момент касания
+  function drawTap(i, z, fade, k) {
+    const G = game, n = G.lv.notes[i], st = G.ns[i];
+    if (st === 1) return;
+    if (z < 0) fade *= Math.max(0, 1 + z / 1.4);
+    if (fade <= 0.01) return;
+    const s = sc(z), X = laneX(n.lane), x = pX(z, X), y = pY(z, 0.04);
+    const hue = st === 2 ? 0 : noteHue(n.kind), sat = st === 2 ? 0 : 100;
+    const rx = 0.82 * s, ry = rx * 0.36;
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = fade * (st === 2 ? 0.3 : 1);
+    // столб света над пэдом
+    const bh = pY(z, 1.5);
+    const bg = g.createLinearGradient(0, y, 0, bh);
+    bg.addColorStop(0, hsl(hue, sat, 70, 0.45)); bg.addColorStop(1, hsl(hue, sat, 60, 0));
+    g.fillStyle = bg; g.fillRect(x - rx * 0.55, bh, rx * 1.1, y - bh);
+    g.drawImage(glow(hue, n.drum ? 'big' : 'bass'), x - rx * 1.2, y - ry * 1.6, rx * 2.4, ry * 3.2);
+    g.strokeStyle = hsl(hue, sat, 82, 1); g.lineWidth = Math.max(1.5, 4 * k);
+    g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = hsl(hue, sat, 70, 0.4); g.lineWidth = Math.max(2, 12 * k);
+    g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.stroke();
+    // кольцо-подсказка сжимается к пэду ровно к моменту удара
+    if (!st) {
+      const dtm = n.t - world.t;
+      if (dtm > 0 && dtm < 0.75) {
+        const q = dtm / 0.75, m = 1 + 2.4 * q;
+        g.strokeStyle = hsl(hue, 100, 88, 0.85 * (1 - q * 0.7)); g.lineWidth = Math.max(1.5, 3 * k);
+        g.beginPath(); g.ellipse(x, y, rx * m, ry * m, 0, 0, Math.PI * 2); g.stroke();
+      }
+    }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
   }
   // лента: светящаяся полоса от начала до конца звука
   function drawRibbon(i, fade) {
@@ -2965,7 +3511,7 @@ else PotokDSPFactory(self);
 
   function drawPlayer(hue, time) {
     const hgt = player.h || 0;
-    const x = pX(0, player.x), y = pY(0, 0.45 + hgt);
+    const x = pX(0, player.x), y = pY(0, 0.45 + hgt + 0.16 * world.thump * world.thump);
     const S = LANE * 0.42;
     const fev = game && game.feverOn > 0;
     const acc = fev ? P.acc + (time * 300) % 360 : P.acc;
@@ -2978,30 +3524,103 @@ else PotokDSPFactory(self);
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
     if (blink) return;
+    // шлейф рывка: полупрозрачные силуэты
+    if (player.ghosts.length) {
+      g.globalCompositeOperation = 'lighter';
+      g.fillStyle = hsl(acc, 100, 65);
+      for (const gh of player.ghosts) {
+        const a = 0.32 * (1 - gh.life / 0.2);
+        if (a <= 0.01) continue;
+        g.globalAlpha = a;
+        g.save(); g.translate(pX(0, gh.x), pY(0, 0.45 + gh.h)); g.rotate(gh.tilt);
+        g.beginPath(); g.moveTo(0, -S * 0.62); g.lineTo(S * 0.78, S * 0.36); g.lineTo(0, S * 0.2); g.lineTo(-S * 0.78, S * 0.36); g.closePath(); g.fill();
+        g.restore();
+      }
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-over';
+    }
+    // свечение: собранная нота окрашивает корабль, перед дропом он «заряжается»
+    const gl = Math.max(player.glow, world.pre * 0.8);
+    if (gl > 0.02) {
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = Math.min(1, gl * 0.7);
+      const gs = S * (2.2 + 1.2 * gl);
+      g.drawImage(glow(player.glow > world.pre ? player.glowHue : P.big, 'small'), x - gs / 2, y - gs / 2, gs, gs);
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-over';
+    }
     g.save();
     g.translate(x, y);
     g.rotate(player.tilt);
-    const sc2 = 1 + hgt * 0.12;
-    g.scale(sc2, sc2);
-    const fl = S * (0.35 + 0.35 * (spec[6] || 0.3) + 0.15 * Math.random()) * (fev ? 1.6 : 1);
+    const sc2 = 1 + hgt * 0.12, th = 0.07 * world.thump * world.thump;
+    g.scale(sc2 * (1 + th), sc2 * (1 - th));
+    const fl = S * (0.35 + 0.35 * (spec[6] || 0.3) + 0.15 * Math.random()) * (fev ? 1.6 : 1) * (1 + 0.9 * (game ? world.heatV : 0));
     g.globalCompositeOperation = 'lighter';
-    g.drawImage(glow(fev ? P.big : P.edge, 'small'), -S * 0.45, S * 0.05, S * 0.9, fl + S * 0.4);
+    // два двигателя: пламя длиннее на накале и в «Потоке»
+    const fh = fev ? P.big : P.edge;
+    for (const ex of [-0.2, 0.2]) g.drawImage(glow(fh, 'small'), S * ex - S * 0.26, S * 0.18, S * 0.52, fl + S * 0.3);
     if (fev) { g.globalAlpha = 0.6; g.drawImage(glow(acc, 'small'), -S * 1.3, -S * 1.1, S * 2.6, S * 2.6); g.globalAlpha = 1; }
     g.globalCompositeOperation = 'source-over';
+    // корпус: стреловидные крылья с вырезом посередине
     g.beginPath();
-    g.moveTo(0, -S * 0.62); g.lineTo(S * 0.78, S * 0.36); g.lineTo(S * 0.18, S * 0.2); g.lineTo(0, S * 0.34);
-    g.lineTo(-S * 0.18, S * 0.2); g.lineTo(-S * 0.78, S * 0.36); g.closePath();
-    const gr = g.createLinearGradient(0, -S * 0.6, 0, S * 0.4);
-    gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, hsl(acc, 100, 55));
+    g.moveTo(0, -S * 0.7); g.lineTo(S * 0.2, -S * 0.08); g.lineTo(S * 0.86, S * 0.3); g.lineTo(S * 0.8, S * 0.4);
+    g.lineTo(S * 0.3, S * 0.3); g.lineTo(S * 0.2, S * 0.42); g.lineTo(-S * 0.2, S * 0.42); g.lineTo(-S * 0.3, S * 0.3);
+    g.lineTo(-S * 0.8, S * 0.4); g.lineTo(-S * 0.86, S * 0.3); g.lineTo(-S * 0.2, -S * 0.08); g.closePath();
+    const gr = g.createLinearGradient(0, -S * 0.7, 0, S * 0.42);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.45, hsl(acc, 100, 72)); gr.addColorStop(1, hsl(acc, 100, 42));
     g.fillStyle = gr; g.fill();
     g.lineJoin = 'round';
-    g.strokeStyle = hsl(acc, 100, 80, 0.9); g.lineWidth = 2; g.stroke();
-    g.beginPath(); g.moveTo(0, -S * 0.3); g.lineTo(S * 0.12, S * 0.05); g.lineTo(-S * 0.12, S * 0.05); g.closePath();
-    g.fillStyle = hsl(hue, 80, 18); g.fill();
+    g.strokeStyle = hsl(acc, 100, 85, 0.95); g.lineWidth = 2; g.stroke();
+    // неоновые кромки крыльев и хребет
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = hsl(P.edge, 100, 75, 0.85); g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(S * 0.24, S * 0.02); g.lineTo(S * 0.78, S * 0.33); g.moveTo(-S * 0.24, S * 0.02); g.lineTo(-S * 0.78, S * 0.33); g.stroke();
+    g.globalCompositeOperation = 'source-over';
+    // кабина
+    g.beginPath(); g.moveTo(0, -S * 0.36); g.quadraticCurveTo(S * 0.13, -S * 0.05, S * 0.1, S * 0.12); g.lineTo(-S * 0.1, S * 0.12); g.quadraticCurveTo(-S * 0.13, -S * 0.05, 0, -S * 0.36); g.closePath();
+    g.fillStyle = hsl(hue, 80, 14); g.fill();
+    g.strokeStyle = hsl(acc, 100, 88, 0.6); g.lineWidth = 1; g.stroke();
     g.restore();
   }
 
+  // линии скорости в небе: чем быстрее и горячее, тем гуще
+  const slines = [];
+  for (let i = 0; i < 26; i++) slines.push({ a: -Math.PI * (0.04 + 0.92 * Math.random()), r: Math.random(), s: 0.6 + Math.random() * 0.8 });
   function drawFx(hue, dt) {
+    const playing = game && state.screen === 'play' && !game.finished;
+    if (playing) {
+      const k = clamp(0.55 * world.heatV + 0.9 * (world.spd - 1.05) + 0.8 * world.dropT, 0, 1);
+      if (k > 0.03 && effQ() !== 'low') {
+        const vx = CX, vy = HY, maxR = Math.hypot(W, H) * 0.8, lh = lerpH(P.acc, P.big, world.heatV);
+        g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        for (let q = 0; q < 2; q++) {
+          g.beginPath();
+          for (const l of slines) {
+            if (q === 0) { l.r += dt * (0.6 + 1.6 * k) * l.s * (0.2 + l.r); if (l.r > 1) { l.r = 0.05 + Math.random() * 0.15; l.a = -Math.PI * (0.04 + 0.92 * Math.random()); } }
+            if ((l.r > 0.5) !== (q === 1)) continue;
+            const r0 = (0.18 + l.r * 0.82) * maxR, r1 = r0 + (20 + 90 * k) * l.s * l.r, ca = Math.cos(l.a), sa = Math.sin(l.a);
+            g.moveTo(vx + ca * r0, vy + sa * r0); g.lineTo(vx + ca * r1, vy + sa * r1);
+          }
+          g.strokeStyle = hsl(lh, 100, 82, (q ? 0.3 : 0.16) * k); g.lineWidth = q ? 2.2 : 1.3;
+          g.stroke();
+        }
+        g.globalCompositeOperation = 'source-over';
+      }
+      // накал: редкие тёплые искры с краёв дороги
+      if (world.heatV > 0.55 && effQ() !== 'low' && !(game.feverOn > 0) && Math.random() < (world.heatV - 0.45) * 0.9) {
+        const side = Math.random() < 0.5 ? -3.3 : 3.3, z = Math.random() * 5;
+        burst(pX(z, side), pY(z, 0.1), P.big + (Math.random() - 0.5) * 30, 1, 180);
+      }
+    }
+    // ударная волна: дроп и новая ступень накала
+    if (world.shock > 0.01) {
+      const k = 1 - world.shock, rr = (0.1 + 1.25 * k) * Math.max(W, H);
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = hsl(P.big, 100, 80, 0.55 * world.shock);
+      g.lineWidth = 2 + 10 * world.shock;
+      g.beginPath(); g.ellipse(CX, HY, rr, rr * 0.42, 0, 0, Math.PI * 2); g.stroke();
+      g.globalCompositeOperation = 'source-over';
+    }
     // «Поток»: искры летят с краёв дороги
     if (game && game.feverOn > 0 && state.screen === 'play') {
       for (let q = 0; q < 2; q++) {
@@ -3108,7 +3727,7 @@ else PotokDSPFactory(self);
     if (state.screen !== 'play') return;
     drag.id = id; drag.x0 = drag.lx = x; drag.y0 = y; drag.t0 = performance.now();
     drag.moved = false; drag.swiped = false; drag.lane0 = nearestLane(player.tx);
-    drag.tapUsed = tapBeat(ts);
+    drag.tapUsed = tapBeat(ts, x < W / 2 ? -1 : 1);
   }
   function dMove(id, x, y) {
     if (id !== drag.id || state.screen !== 'play') return;
@@ -3117,6 +3736,7 @@ else PotokDSPFactory(self);
     if (!drag.swiped && dya < -42 && Math.abs(dya) > 1.3 * Math.abs(dxa) && performance.now() - drag.t0 < 450) { drag.swiped = true; swipeUp(); return; }
     if (Math.abs(dxa) > 12) drag.moved = true;
     if (settings.tilt || !drag.moved || drag.swiped) return;
+    player.mv = null;
     player.tx = clamp(player.tx + dx / (LANE * 1.05) * 2 * settings.sens, -2.35, 2.35);
   }
   let lastTapT = 0, lastTapDir = 0;
@@ -3129,21 +3749,22 @@ else PotokDSPFactory(self);
     if (!cancel && drag.moved && Math.abs(dxa) >= 28) {
       let target = nearestLane(player.tx);
       if (target === drag.lane0) target = clamp(drag.lane0 + Math.sign(dxa) * 2, -2, 2);
-      player.tx = target; return;
+      if (Math.abs(target - player.x) > 0.4 && Math.abs(target - drag.lane0) > 0.1) steerTo(target); else player.tx = target;
+      return;
     }
     if (!cancel && !drag.moved && dur < 300) {
       if (drag.tapUsed) return;
       const dir = x < W / 2 ? -1 : 1;
       if (now - lastTapT < 60 && dir === lastTapDir) return;
       lastTapT = now; lastTapDir = dir;
-      player.tx = clamp(nearestLane(player.tx) + dir * 2, -2, 2);
+      steerTo(nearestLane(player.tx) + dir * 2);
     } else player.tx = nearestLane(player.tx);
   }
   const tid = (t) => 't' + t.identifier;
   cv.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    if (drag.id !== null && e.touches.length > 1) { tapBeat(e.timeStamp); return; } // второй палец — только тап по кольцу
+    if (drag.id !== null && e.touches.length > 1) { tapBeat(e.timeStamp, t.clientX < W / 2 ? -1 : 1); return; } // второй палец — только удар
     dStart(tid(t), t.clientX, t.clientY, e.timeStamp);
   }, { passive: false });
   cv.addEventListener('touchmove', (e) => { e.preventDefault(); for (const t of e.changedTouches) dMove(tid(t), t.clientX, t.clientY); }, { passive: false });
@@ -3172,9 +3793,9 @@ else PotokDSPFactory(self);
   document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
   window.addEventListener('keydown', (e) => {
     if (state.screen === 'play') {
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') { player.tx = clamp(nearestLane(player.tx) - 2, -2, 2); e.preventDefault(); }
-      else if (e.code === 'ArrowRight' || e.code === 'KeyD') { player.tx = clamp(nearestLane(player.tx) + 2, -2, 2); e.preventDefault(); }
-      else if (e.code === 'Space' || e.code === 'KeyJ' || e.code === 'KeyK') { if (!e.repeat) tapBeat(e.timeStamp); e.preventDefault(); }
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') { if (e.repeat || !tapBeat(e.timeStamp, -1, true)) steerTo(nearestLane(player.tx) - 2); e.preventDefault(); }
+      else if (e.code === 'ArrowRight' || e.code === 'KeyD') { if (e.repeat || !tapBeat(e.timeStamp, 1, true)) steerTo(nearestLane(player.tx) + 2); e.preventDefault(); }
+      else if (e.code === 'Space' || e.code === 'KeyJ' || e.code === 'KeyK') { if (!e.repeat) tapBeat(e.timeStamp, 0); e.preventDefault(); }
       else if (e.code === 'ArrowUp' || e.code === 'KeyW') { if (!e.repeat) swipeUp(); e.preventDefault(); }
       else if (e.code === 'Escape' || e.code === 'KeyP') { pauseGame(); e.preventDefault(); }
     } else if (state.screen === 'pause' && (e.code === 'Escape' || e.code === 'Space')) { resumeGame(); e.preventDefault(); }
@@ -3302,7 +3923,7 @@ else PotokDSPFactory(self);
       const buf = await decode(ab.slice(0));
       let an = null;
       const cached = await idb.get('data', id);
-      if (cached && cached.an && cached.an.v === 4) an = cached.an;
+      if (cached && cached.an && cached.an.v === 5) an = cached.an;
       if (!an) {
         setLoad(0.1, STAGE.listen); await nextFrame();
         const prep = DSP.prepare(channelsOf(buf), buf.sampleRate);
@@ -3426,7 +4047,7 @@ else PotokDSPFactory(self);
         const id = await hashBytes(bytes);
         let an = null;
         const cached = await idb.get('data', id);
-        if (cached && cached.an && cached.an.v === 4) an = cached.an;
+        if (cached && cached.an && cached.an.v === 5) an = cached.an;
         if (!an) {
           const buf = await decode(bytes.slice(0));
           const prep = DSP.prepare(channelsOf(buf), buf.sampleRate);
@@ -3640,8 +4261,14 @@ else PotokDSPFactory(self);
   function showResults(res) {
     const tr = state.track;
     $('#resHead').textContent = (res.failed ? 'Сошёл с трассы на ' + fmtTime(res.dur) + ' · ' : '') + tr.title + ' · ' + MODE_NAME[res.mode];
-    $('#resGrade').textContent = res.grade;
-    $('#resScore').textContent = fmtNum(res.score);
+    const gEl = $('#resGrade');
+    gEl.textContent = res.grade;
+    gEl.classList.remove('pop', 'gS'); void gEl.offsetWidth; gEl.classList.add(res.grade === 'S' ? 'gS' : 'pop');
+    { // счёт набегает
+      const el = $('#resScore'), t0 = performance.now(), target = res.score;
+      const tick = () => { const k = Math.min(1, (performance.now() - t0) / 1100), e = 1 - Math.pow(1 - k, 3); el.textContent = fmtNum(Math.round(target * e)); if (k < 1 && state.screen === 'results') requestAnimationFrame(tick); else el.textContent = fmtNum(target); };
+      el.textContent = '0'; requestAnimationFrame(tick);
+    }
     $('#resNew').hidden = !res.isNew;
     $('#switchBtn').hidden = !!res.set;
     const st = [
@@ -3649,15 +4276,17 @@ else PotokDSPFactory(self);
       ['Макс. комбо', fmtNum(res.maxCombo)],
       ['Нот собрано', res.got + ' из ' + res.total],
     ];
-    if (res.rings) st.push(['Кольца', res.perfect + ' идеально · ' + res.good + ' хорошо']);
+    if (res.taps) st.push(['Удары', res.tapHit + ' из ' + res.taps]);
+    if (res.rings || res.taps) st.push([res.taps ? 'Удары и кольца' : 'Кольца', res.perfect + ' идеально · ' + res.good + ' хорошо']);
     if (res.holdsTotal) st.push(['Ленты', res.holds + ' из ' + res.holdsTotal]);
     if (res.barriers) st.push(['Прыжки', res.jumps + ' из ' + res.barriers]);
     if (res.mode !== 'easy') st.push(['Столкновений', String(res.hits)]);
     else st.push(['Длина', fmtTime(res.full)]);
-    $('#resStats').innerHTML = st.map(([a, b]) => '<div><small>' + esc(a) + '</small><b>' + esc(b) + '</b></div>').join('');
+    $('#resStats').innerHTML = st.map(([a, b], i) => '<div style="--i:' + i + '"><small>' + esc(a) + '</small><b>' + esc(b) + '</b></div>').join('');
     $('#switchBtn').textContent = res.mode === 'expert' ? 'Снова с Лёгкого' : 'Сложнее: ' + MODE_NAME[MODES[MODES.indexOf(res.mode) + 1]];
     $('#resTop').hidden = true;
     show('results');
+    drawRunMap(res.strip);
     if (state.pendingTop) { renderTop($('#resTop'), state.pendingTop); state.pendingTop = null; }
     else if (!res.failed && api.on()) loadTop($('#resTop'), res.mode);
   }
@@ -3691,6 +4320,7 @@ else PotokDSPFactory(self);
     const off = settings.offset == null ? 0 : settings.offset;
     $('#offRange').value = off; $('#offOut').textContent = off + ' мс';
     $('#hapChk').checked = !!settings.haptics;
+    $('#mufChk').checked = settings.muffle !== false;
     $('#tiltChk').checked = !!settings.tilt;
     $('#sensRange').value = settings.sens; $('#sensOut').textContent = (+settings.sens).toFixed(1);
     $('#volRange').value = settings.volume; $('#volOut').textContent = Math.round(settings.volume * 100) + '%';
@@ -3862,6 +4492,7 @@ else PotokDSPFactory(self);
   $('#toTrackBtn').addEventListener('click', () => openTrack(state.track));
   $('#shareBtn').addEventListener('click', shareResult);
   $('#offRange').addEventListener('input', (e) => { settings.offset = +e.target.value; $('#offOut').textContent = settings.offset + ' мс'; saveSettings(); });
+  $('#mufChk').addEventListener('change', (e) => { settings.muffle = e.target.checked; saveSettings(); });
   $('#hapChk').addEventListener('change', (e) => { settings.haptics = e.target.checked; saveSettings(); if (settings.haptics) haptic('kickStrong'); });
   $('#tiltChk').addEventListener('change', (e) => { settings.tilt = e.target.checked; saveSettings(); if (settings.tilt) startTilt(); });
   $('#sensRange').addEventListener('input', (e) => { settings.sens = +e.target.value; $('#sensOut').textContent = settings.sens.toFixed(1); saveSettings(); });
@@ -3901,7 +4532,7 @@ else PotokDSPFactory(self);
     } catch (e) { /* */ }
     if (token && CONFIG.server) fetchTrack(token, { title, artist });
   }
-  window.__potok = { state, world, player, get game() { return game; }, get usedWorker() { return usedWorker; }, settings, loadDemo, startGame, finish, tapBeat, swipeUp, applyMode };
+  window.__potok = { state, world, player, get game() { return game; }, get usedWorker() { return usedWorker; }, settings, loadDemo, startGame, finish, tapBeat, swipeUp, applyMode, steerTo, get audio() { return A; } };
 }
 </script>
 </body>
