@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07040f">
 <title>Поток — игра под твой бит</title>
-<!--TG_SCRIPT-->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
@@ -203,6 +203,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
       Загрузить трек
     </button>
     <input type="file" id="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+    <p class="dim fileHint" id="fileHint" hidden>Трек из Telegram: открой его в чате → «⋯» → «Сохранить в Файлы» (iPhone) или «Сохранить в Загрузки» (Android), потом жми «Загрузить трек». Загруженные треки остаются в «Недавних».</p>
     <button class="btn ghost" id="demoBtn">Сыграть демо-трек</button>
     <div id="tgBlock" hidden>
       <h3>Из Telegram</h3>
@@ -4308,8 +4309,10 @@ else PotokDSPFactory(self);
     if (!r || !tr) return;
     const text = (r.failed ? 'Сошёл с трассы на «' : 'Прошёл «') + tr.title + '» в Потоке: ' + fmtNum(r.score) + ' очков, оценка ' + r.grade + ' (' + MODE_NAME[r.mode] + '). Сможешь больше?';
     const link = CONFIG.bot ? 'https://t.me/' + CONFIG.bot : '';
-    if (tgv('6.1') && link) {
-      try { tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text)); return; } catch (e) { /* */ }
+    if (tgv('6.1')) {
+      // без сервера имя бота неизвестно — отправляем просто текст
+      const u = link ? 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text) : 'https://t.me/share/url?url=' + encodeURIComponent(text);
+      try { tg.openTelegramLink(u); return; } catch (e) { /* */ }
     }
     const ok = await copyText(text + (link ? ' ' + link : ''));
     toast(ok ? 'Текст скопирован — отправь другу' : text);
@@ -4522,6 +4525,7 @@ else PotokDSPFactory(self);
   show('home');
   refreshLibrary();
   refreshTgList();
+  $('#fileHint').hidden = !!CONFIG.server || !tg;
   requestAnimationFrame(frame);
   {
     let token = null, title = null, artist = null;
